@@ -3,15 +3,54 @@ import sqlite3
 import os
 
 # --- Configuración de base de datos ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'ingenieria_db.sqlite')
+# [SOLUCIÓN 1 PARA RENDER]: Usar el directorio /tmp/ si estamos en el servidor de Render,
+# que es la única ubicación garantizada como escribible.
+if os.environ.get('RENDER'):
+    DB_PATH = '/tmp/ingenieria_db.sqlite'
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DB_PATH = os.path.join(BASE_DIR, 'ingenieria_db.sqlite')
 
 app = Flask(__name__, template_folder='templates')
-app.secret_key = 'clave_super_secreta'
+app.secret_key = 'clave_super_secreta' 
 
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    
+    # [SOLUCIÓN 2 PARA RENDER]: Crear las tablas y el admin cada vez
+    # que se conecta, ya que la DB se borra en los despliegues gratuitos.
+    cursor = conn.cursor()
+    
+    # 1. Tabla actividades
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS actividades (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo TEXT NOT NULL,
+            descripcion TEXT NOT NULL,
+            fecha DATE NOT NULL,
+            categoria TEXT NOT NULL,
+            oficial INTEGER NOT NULL,
+            cupos INTEGER NOT NULL
+        );
+    """)
+    
+    # 2. Tabla admins (necesaria para el login)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS admins (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL
+        );
+    """)
+
+    # 3. Insertar el administrador por defecto si no existe ninguno
+    cursor.execute("SELECT COUNT(*) FROM admins")
+    if cursor.fetchone()[0] == 0:
+        # Credenciales de Admin: admin/1234
+        cursor.execute("INSERT INTO admins (username, password) VALUES (?, ?)", ('admin', '1234'))
+        
+    conn.commit()
     return conn
 
 # --- PÁGINA DE INICIO ---
@@ -119,7 +158,7 @@ def crear_actividad():
         
         conn = get_db_connection()
         try: 
-            # [CORRECCIÓN APLICADA]: Se agregó 'cupos' a la lista de columnas y '0' a los valores para evitar el IntegrityError.
+            # Inserción robusta: incluye 'cupos' con valor 0 para evitar IntegrityError
             conn.execute("INSERT INTO actividades (titulo, descripcion, fecha, categoria, oficial, cupos) VALUES (?, ?, ?, ?, 0, 0)",
                          (titulo, descripcion, fecha, categoria))
             conn.commit()
@@ -128,6 +167,7 @@ def crear_actividad():
             return redirect(url_for('inicio'))
         
         except sqlite3.OperationalError:
+            # Manejo de error de base de datos bloqueada (común en modo debug local)
             flash('Error: La base de datos está temporalmente bloqueada. Inténtalo de nuevo en unos segundos.', 'error')
             return redirect(url_for('crear_actividad'))
             
@@ -143,6 +183,6 @@ def admin_logout():
     session.pop('admin', None)
     return redirect(url_for('inicio'))
 
-# --- EJECUTAR APP ---
-if __name__ == '__main__':
-    app.run(debug=True)
+# --- EJECUTAR APP (COMENTADO PARA PRODUCCIÓN) ---
+# if __name__ == '__main__':
+#     app.run(debug=True)
