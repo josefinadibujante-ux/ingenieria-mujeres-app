@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Admin</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        nav a { margin-right: 15px; text-decoration: none; color: #5d5d81; font-weight: bold; }
+        nav a:hover { text-decoration: underline; }
+        .content { background: white; padding: 20px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>👩‍💻 Panel de Administrador</h1>
+    <nav>
+        <a href="{{ url_for('inicio') }}">Inicio</a> |
+        <a href="{{ url_for('crear_oficial') }}">Agregar Actividad Oficial</a> |
+        <a href="{{ url_for('actividades_oficiales') }}">Ver Actividades Oficiales</a> |
+        <a href="{{ url_for('logout') }}">Cerrar Sesión</a>
+    </nav>
+
+    <div class="content">
+        <p>Bienvenido, administrador. Desde aquí puedes agregar y gestionar actividades oficiales.</p>
+    </div>
+</body>
+</html>

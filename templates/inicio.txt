@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Comunidad de Mujeres Ingeniería V2</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        header { background-color: #5d5d81; color: white; padding: 20px; border-radius: 8px; }
+        nav a { margin-right: 15px; text-decoration: none; color: #b1e0ff; font-weight: bold; }
+        nav a:hover { text-decoration: underline; }
+        .content { margin-top: 20px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .cine-destacado { border: 2px solid #8c8cd9; padding: 15px; background-color: #e6e6f2; margin-top: 20px; border-radius: 6px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎀 Comunidad de Mujeres Ingeniería 🎀</h1>
+        <nav>
+            <a href="{{ url_for('inicio') }}">Inicio</a>
+            <a href="{{ url_for('actividades') }}">Actividades y Talleres</a>
+            <a href="{{ url_for('crear_actividad') }}">Proponer Evento</a>
+            <a href="{{ url_for('club_cine') }}">Club de Cine</a>
+        </nav>
+    </header>
+
+    <div class="content">
+        <h2>🚀 ¡Bienvenida!</h2>
+        <p>Conéctate, aprende y crece con nuestra comunidad de mujeres en tecnología.</p>
+        
+        {% if cine_del_mes %}
+        <div class="cine-destacado">
+            <h3>🎬 Cine Destacado del Mes: {{ cine_del_mes['titulo'] }}</h3>
+            <p>{{ cine_del_mes['descripcion'] }}</p>
+            <p>Fecha: <strong>{{ cine_del_mes['fecha'] }}</strong></p>
+            <a href="{{ url_for('club_cine') }}">Ver más películas propuestas</a>
+        </div>
+        {% endif %}
+
+        <h3>Explora:</h3>
+        <ul>
+            <li><a href="{{ url_for('actividades') }}">📅 Actividades y Talleres</a></li>
+            <li><a href="{{ url_for('club_cine') }}">🍿 Club de Cine</a></li>
+            <li><a href="{{ url_for('crear_actividad') }}">✍️ Proponer Evento</a></li>
+        </ul>
+    </div>
+</body>
+</html>

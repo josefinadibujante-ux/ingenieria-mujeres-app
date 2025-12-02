@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Actividades Oficiales</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        header { padding: 10px 0; border-bottom: 2px solid #8c8cd9; margin-bottom: 20px; }
+        nav a { margin-right: 15px; text-decoration: none; color: #5d5d81; font-weight: bold; }
+        nav a:hover { text-decoration: underline; }
+        .actividad { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .actividad h3 { color: #8c8cd9; margin-top: 0; }
+        .actividad p { margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="{{ url_for('inicio') }}">Inicio</a> |
+            <a href="{{ url_for('actividades') }}">Actividades y Talleres</a> |
+            <a href="{{ url_for('club_cine') }}">Club de Cine</a> |
+            <a href="{{ url_for('panel_admin') }}">Dashboard</a> |
+            <a href="{{ url_for('crear_actividad') }}">Proponer Evento</a>
+        </nav>
+    </header>
+
+    <h1>Actividades y Talleres Oficiales</h1>
+    
+    {% for act in actividades %}
+        <div class="actividad">
+            <h3>{{ act['titulo'] }}</h3>
+            <p><strong>Fecha:</strong> {{ act['fecha'] }}</p>
+            <p><strong>Categoría:</strong> {{ act['categoria'] }}</p>
+            <p>{{ act['descripcion'] }}</p>
+        </div>
+    {% else %}
+        <p>No hay actividades oficiales publicadas en este momento.</p>
+    {% endfor %}
+
+</body>
+</html>

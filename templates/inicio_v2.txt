@@ -1,0 +1,12 @@
+<!-- templates/inicio.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Inicio</title>
+</head>
+<body>
+    <h1>¡Bienvenida a la Comunidad de Mujeres Ingeniería!</h1>
+    <p>Si ves esto, significa que Flask encontró tu template.</p>
+</body>
+</html>

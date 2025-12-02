@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Club de Cine</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        header { background-color: #5d5d81; color: white; padding: 20px; border-radius: 8px; }
+        nav a { margin-right: 15px; text-decoration: none; color: #b1e0ff; font-weight: bold; }
+        nav a:hover { text-decoration: underline; }
+        .pelicula { border: 1px solid #c3c3e5; padding: 15px; margin-bottom: 15px; border-radius: 6px; background-color: white; }
+        .pelicula h3 { margin-top: 0; color: #3b3b5c; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🍿 Club de Cine</h1>
+        <nav>
+            <a href="{{ url_for('inicio') }}">Inicio</a>
+            <a href="{{ url_for('panel_admin') }}">Panel Admin</a>
+        </nav>
+    </header>
+
+    <hr>
+
+    {% if peliculas %}
+        {% for peli in peliculas %}
+        <div class="pelicula">
+            <h3>{{ peli['titulo'] }}</h3>
+            <p>{{ peli['descripcion'] }}</p>
+            <p><strong>Fecha:</strong> {{ peli['fecha'] }}</p>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No hay películas registradas aún. 😔</p>
+    {% endif %}
+
+</body>
+</html>
+

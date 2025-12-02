@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Panel Administrador</title>
+<style>
+body { font-family: Tahoma, sans-serif; margin: 20px; background-color: #f4f4f9; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+th { background-color: #8c8cd9; color: white; }
+a { text-decoration: none; color: #5d5d81; }
+a:hover { text-decoration: underline; }
+button { padding: 5px 10px; background-color: #8c8cd9; color: white; border: none; border-radius: 4px; cursor: pointer; }
+</style>
+</head>
+<body>
+<h2>Panel Administrador</h2>
+<p><a href="{{ url_for('admin_logout') }}">Cerrar sesión</a></p>
+
+<table>
+<tr>
+<th>ID</th>
+<th>Título</th>
+<th>Fecha</th>
+<th>Oficial</th>
+<th>Acciones</th>
+</tr>
+{% for act in actividades %}
+<tr>
+<td>{{ act['id'] }}</td>
+<td>{{ act['titulo'] }}</td>
+<td>{{ act['fecha'] }}</td>
+<td>{{ act['oficial'] }}</td>
+<td>
+{% if act['oficial'] == 0 %}
+<a href="{{ url_for('marcar_oficial', id=act['id']) }}">Marcar como oficial</a>
+{% else %}
+<a href="{{ url_for('desmarcar_oficial', id=act['id']) }}">Desmarcar oficial</a>
+{% endif %}
+</td>
+</tr>
+{% endfor %}
+</table>
+</body>
+</html>

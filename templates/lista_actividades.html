@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Lista de Actividades</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        nav a { margin-right: 15px; text-decoration: none; color: #5d5d81; font-weight: bold; }
+        nav a:hover { text-decoration: underline; }
+        .actividad { border: 1px solid #c3c3e5; padding: 15px; margin-bottom: 15px; border-radius: 6px; background-color: white; }
+        .oficial { border-color: #8c8cd9; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📅 Próximas Actividades</h1>
+        <nav>
+            <a href="{{ url_for('inicio') }}">Inicio</a> |
+            <a href="{{ url_for('crear_actividad') }}">Proponer Actividad</a>
+        </nav>
+    </header>
+
+    <hr>
+
+    {% if actividades %}
+        {% for actividad in actividades %}
+        <div class="actividad {% if actividad['oficial'] %}oficial{% endif %}">
+            <h3>{{ actividad['titulo'] }}</h3>
+            <p>{{ actividad['descripcion'] }}</p>
+            <p><strong>Fecha:</strong> {{ actividad['fecha'] }}</p>
+            <p><strong>Cupos:</strong> {{ actividad['cupos'] }}</p>
+            {% if actividad['oficial'] %}
+                <p style="color:green;font-weight:bold;">✅ Actividad Oficial</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No hay actividades programadas. ¡Propón una!</p>
+    {% endif %}
+
+</body>
+</html>
