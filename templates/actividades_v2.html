@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Nuestros Talleres · Comunidad de Mujeres Campus Antonio Varas</title>
+
+    <meta name="description" content="Agenda de talleres y actividades oficiales de la Comunidad de Mujeres del Campus Antonio Varas. Inscríbete en el próximo taller.">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Nuestros Talleres · Comunidad de Mujeres Campus Antonio Varas">
+    <meta property="og:description" content="Inscríbete en los próximos talleres y actividades de la comunidad.">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1573163231162-717dfc3e0c1f?auto=format&fit=crop&w=1200&q=80">
+
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Griffy&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        body { background-color: #fdfbfb; background-image: radial-gradient(#ebe0ff 0.5px, transparent 0.5px); background-size: 20px 20px; font-family: 'Quicksand', sans-serif; color: #40114F; }
+        .navbar-custom { background: #3b3b58; padding: 15px; }
+        .section-title { font-family: 'Griffy', cursive; font-size: 3.5rem; color: #6f42c1; margin: 40px 0; text-align: center; font-weight: 400; }
+        .actividad-card { background: white; border: 1px solid #eee; border-radius: 0px; box-shadow: 10px 10px 0px #7D6D94; padding: 35px; margin-bottom: 30px; transition: all 0.3s ease; position: relative; }
+        .actividad-card:hover { transform: translate(-5px, -5px); box-shadow: 15px 15px 0px #6f42c1; }
+        .actividad-titulo { font-family: 'Griffy', cursive; font-size: 2.2rem; color: #40114F; margin-bottom: 20px; font-weight: 400; }
+        .descripcion-texto { font-size: 1.1rem; line-height: 1.6; color: #444; margin-bottom: 25px; }
+        .fecha-badge { display: inline-flex; align-items: center; background: #f8f5ff; color: #6f42c1; padding: 10px 18px; border-radius: 50px; font-size: 0.95rem; font-weight: 600; margin-bottom: 20px; border: 1px dashed #6f42c1; }
+        .fecha-badge i { margin-right: 10px; }
+        .btn-inscribir { background-color: #40114F; color: white; border: none; padding: 15px; font-weight: bold; transition: 0.3s; }
+        .btn-inscribir:hover { background-color: #6f42c1; color: white; }
+        .btn-proponer { background: white; color: #6f42c1; border: 2px solid #6f42c1; padding: 12px 30px; border-radius: 50px; font-weight: 600; text-decoration: none; transition: all 0.3s; display: inline-block; }
+        .btn-proponer:hover { background: #6f42c1; color: white; box-shadow: 0 5px 15px rgba(111, 66, 193, 0.3); }
+    </style>
+</head>
+<body>
+    <nav class="navbar-custom">
+        <div class="container">
+            <a href="{{ url_for('inicio') }}" class="text-white text-decoration-none fw-bold">
+                <i class="bi bi-arrow-left me-2"></i>Volver al Inicio
+            </a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1 class="section-title">Nuestros Talleres</h1>
+
+        <div class="row justify-content-center">
+            {% for act in actividades %}
+            <div class="col-lg-6">
+                <div class="actividad-card">
+                    <div class="fecha-badge">
+                        <i class="bi bi-calendar-event"></i>
+                        {% if act.fecha %}{{ act.fecha }}{% else %}Próximamente{% endif %}
+                    </div>
+                    <h2 class="actividad-titulo">{{ act.titulo }}</h2>
+                    <p class="descripcion-texto">{{ act.descripcion }}</p>
+                    <a href="{{ url_for('inscribir', titulo=act.titulo) }}" class="btn btn-inscribir w-100">
+                        ¡Quiero participar!
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-12 text-center py-5">
+                <p class="descripcion-texto">Aún no hay talleres programados... ¡pero se vienen cosas lindas!</p>
+                <a href="{{ url_for('crear_actividad') }}" class="btn-proponer">Proponer una actividad</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

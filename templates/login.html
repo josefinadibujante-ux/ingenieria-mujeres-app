@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Panel Administrativo · Comunidad de Mujeres Campus Antonio Varas</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Griffy&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #40114F 0%, #7D6D94 100%); height: 100vh; display: flex; align-items: center; font-family: 'Quicksand', sans-serif; }
+        h3 { font-family: 'Griffy', cursive; font-weight: 400; }
+        .card-login { background: white; border-radius: 20px; padding: 35px; box-shadow: 0 15px 35px rgba(0,0,0,0.4); }
+        .btn-ingresar { background-color: #40114F; color: white; border: none; font-weight: 600; border-radius: 10px; }
+        .btn-ingresar:hover { background-color: #2a0b35; color: white; transform: translateY(-1px); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5 col-lg-4">
+                <div class="card-login">
+                    <h3 class="text-center mb-4">Panel Administrativo</h3>
+
+                    {% with messages = get_flashed_messages() %}
+                      {% if messages %}<div class="alert alert-danger small">{{ messages[0] }}</div>{% endif %}
+                    {% endwith %}
+
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label class="form-label">Correo</label>
+                            <input type="email" name="email" class="form-control" placeholder="usuario@andresbello.edu" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Contraseña</label>
+                            <input type="password" name="password" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-ingresar w-100 py-2">Ingresar</button>
+                    </form>
+
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('inicio') }}" class="text-decoration-none small text-secondary">← Volver al sitio público</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

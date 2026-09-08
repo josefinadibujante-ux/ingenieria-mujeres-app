@@ -1,1 +1,18 @@
-firebase-key.json 
+venv/
+__pycache__/
+*.pyc
+*.sqlite
+*.db
+.env
+key.json
+comunidad-mujeres-firebase-adminsdk-*.json
+firebase-key.json
+
+# Notas de planificación (no forman parte del proyecto)
+ESTADO_DEL_PROYECTO_Y_PLAN.md
+PROMPT_FINAL_CLAUDE_CODE.md
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
