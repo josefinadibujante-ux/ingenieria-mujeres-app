@@ -6,7 +6,9 @@ __pycache__/
 .env
 key.json
 comunidad-mujeres-firebase-adminsdk-*.json
+web-ingenieras-oficial-firebase-adminsdk-*.json
 firebase-key.json
+CREDENCIALES.md
 
 # Notas de planificación (no forman parte del proyecto)
 ESTADO_DEL_PROYECTO_Y_PLAN.md
