@@ -1,4 +1,6 @@
 import os
+from datetime import datetime, timezone
+from collections import OrderedDict
 
 from flask import (
     Flask,
@@ -116,7 +118,8 @@ def crear_actividad():
             "fecha": request.form.get('fecha'),
             "habilidad": request.form.get('habilidad'),
             "materiales": request.form.get('materiales'),
-            "estado": "pendiente"
+            "estado": "pendiente",
+            "creado_en": firestore.SERVER_TIMESTAMP,
         }
         db.collection("actividades").add(datos)
         flash("¡Propuesta enviada con éxito!")
@@ -139,7 +142,8 @@ def inscribir():
             "rut": request.form.get('rut'),
             "carrera": request.form.get('carrera'),
             "sede_antonio_varas": request.form.get('sede_av'),
-            "contacto": request.form.get('contacto')
+            "contacto": request.form.get('contacto'),
+            "creado_en": firestore.SERVER_TIMESTAMP,
         }
         db.collection("inscripciones").add(registro)
         return redirect(url_for('actividades'))
@@ -159,47 +163,77 @@ def login():
             flash("Credenciales incorrectas.")
     return render_template('login.html')
 
+def _fecha_orden(item):
+    """Clave de orden: más antigua primero. Lo que no tiene 'creado_en'
+    (propuestas de antes de que se empezara a guardar la fecha) queda al
+    principio, marcado como fecha desconocida."""
+    valor = item.get('creado_en')
+    if valor is None:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    return valor
+
+
 @app.route('/panel-admin')
 def panel_admin():
     if not session.get('admin_logueado'):
         return redirect(url_for('login'))
 
-    # 1. Propuestas pendientes
+    # 1. Propuestas pendientes (con todos los datos que mandó la persona,
+    #    para poder revisarlas antes de aprobarlas, no solo el título).
     prop_docs = db.collection("actividades").where("estado", "==", "pendiente").stream()
     lista_prop = []
     for d in prop_docs:
         p = d.to_dict()
         p['id'] = d.id
         lista_prop.append(p)
+    lista_prop.sort(key=_fecha_orden)
 
-    # 2. Actividades oficiales (para poder eliminarlas si hubo error)
+    # 2. Actividades oficiales (para poder despublicarlas o eliminarlas)
     oficial_docs = db.collection("actividades").where("estado", "==", "oficial").stream()
     lista_oficiales = []
     for d in oficial_docs:
         o = d.to_dict()
         o['id'] = d.id
         lista_oficiales.append(o)
+    lista_oficiales.sort(key=_fecha_orden)
 
-    # 3. Inscripciones
+    # 3. Inscripciones, agrupadas por actividad para ver de un vistazo
+    #    cuántas alumnas se anotaron a cada una.
     ins_docs = db.collection("inscripciones").stream()
-    lista_ins = []
+    grupos = OrderedDict()
     for d in ins_docs:
         i = d.to_dict()
         i['id'] = d.id
-        lista_ins.append(i)
+        titulo = i.get('actividad_titulo') or 'Sin actividad'
+        grupos.setdefault(titulo, []).append(i)
+    inscripciones_agrupadas = [
+        {"actividad": titulo, "inscritas": sorted(personas, key=_fecha_orden)}
+        for titulo, personas in sorted(grupos.items())
+    ]
+
+    total_inscritas = sum(len(g["inscritas"]) for g in inscripciones_agrupadas)
 
     return render_template('admin_v2.html',
                            propuestas=lista_prop,
                            oficiales=lista_oficiales,
-                           inscripciones=lista_ins)
+                           inscripciones_agrupadas=inscripciones_agrupadas,
+                           total_inscritas=total_inscritas)
 
-@app.route('/aprobar/<id>')
+@app.route('/aprobar/<id>', methods=['POST'])
 def aprobar_actividad(id):
     if session.get('admin_logueado'):
         db.collection("actividades").document(id).update({"estado": "oficial"})
+        flash("Actividad aprobada y publicada.")
     return redirect(url_for('panel_admin'))
 
-@app.route('/eliminar/<id>')
+@app.route('/despublicar/<id>', methods=['POST'])
+def despublicar_actividad(id):
+    if session.get('admin_logueado'):
+        db.collection("actividades").document(id).update({"estado": "pendiente"})
+        flash("Actividad despublicada: volvió a Propuestas por Aprobar.")
+    return redirect(url_for('panel_admin'))
+
+@app.route('/eliminar/<id>', methods=['POST'])
 def eliminar_actividad(id):
     if session.get('admin_logueado'):
         try:
@@ -209,7 +243,7 @@ def eliminar_actividad(id):
             print(f"Error al eliminar: {e}")
     return redirect(url_for('panel_admin'))
 
-@app.route('/eliminar_inscripcion/<id>')
+@app.route('/eliminar_inscripcion/<id>', methods=['POST'])
 def eliminar_inscripcion(id):
     if session.get('admin_logueado'):
         db.collection("inscripciones").document(id).delete()

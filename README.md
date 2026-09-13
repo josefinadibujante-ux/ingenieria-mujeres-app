@@ -117,7 +117,10 @@ El proyecto está desplegado en Render como
 ## Seguridad
 
 - Credenciales de administración fuera del código, en variables de entorno.
-- CSRF en todos los formularios POST (`csrf_token` de Flask-WTF).
+- CSRF en todos los formularios POST (`csrf_token` de Flask-WTF). Las acciones
+  del panel admin (aprobar, despublicar, eliminar, borrar inscripción) son
+  formularios POST, no links GET — así no se pueden disparar sin querer ni sin
+  el token CSRF.
 - CSP + HSTS + `X-Frame-Options: DENY` + `X-Content-Type-Options: nosniff` vía
   Flask-Talisman. La CSP permite `cdn.jsdelivr.net`, `cdnjs.cloudflare.com`,
   `fonts.googleapis.com`, `fonts.gstatic.com`, `unpkg.com`,

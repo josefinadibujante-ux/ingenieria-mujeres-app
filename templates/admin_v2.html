@@ -11,19 +11,44 @@
     <link href="https://fonts.googleapis.com/css2?family=Griffy&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Quicksand', sans-serif; background-color: #fdfbfb; background-image: radial-gradient(#ebe0ff 0.5px, transparent 0.5px); background-size: 20px 20px; color: #40114F; padding: 30px 15px; }
-        .panel { max-width: 1000px; margin: auto; background: white; padding: 35px; border-radius: 20px; box-shadow: 0 10px 30px rgba(64, 17, 79, 0.12); }
+        .panel { max-width: 1100px; margin: auto; }
+        .panel-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(64, 17, 79, 0.12); margin-bottom: 30px; }
         h1 { font-family: 'Griffy', cursive; font-weight: 400; text-align: center; color: #40114F; }
-        h2 { font-family: 'Griffy', cursive; font-weight: 400; color: #6f42c1; }
-        .section-title { border-bottom: 2px solid #ebe0ff; padding-bottom: 10px; margin-top: 40px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; margin-bottom: 30px; }
-        th, td { padding: 12px; border: 1px solid #eee; text-align: left; font-size: 0.9rem; }
-        th { background-color: #40114F; color: white; font-weight: 600; }
-        tr:nth-child(even) { background-color: #f8f5ff; }
-        .btn-aprobar { background-color: #2e7d32; color: white; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-weight: 600; }
-        .btn-eliminar { background-color: #c62828; color: white; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-weight: 600; margin-left: 5px; }
+        h2 { font-family: 'Griffy', cursive; font-weight: 400; color: #6f42c1; font-size: 1.8rem; }
+        .section-title { border-bottom: 2px solid #ebe0ff; padding-bottom: 10px; margin-bottom: 20px; display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        .contador { font-size: 0.9rem; color: #7D6D94; font-weight: 600; }
         .btn-logout { display: inline-block; margin: 15px 0; background: #7D6D94; color: white; padding: 10px 22px; border-radius: 50px; text-decoration: none; font-weight: 600; }
         .btn-logout:hover { background: #40114F; color: white; }
+        .buscador { border: 1px solid #ebe0ff; border-radius: 50px; padding: 8px 18px; font-size: 0.9rem; min-width: 220px; }
+        .buscador:focus { outline: none; border-color: #6f42c1; }
         .no-data { text-align: center; color: #999; padding: 20px; }
+
+        .item-card { border: 1px solid #eee; border-radius: 15px; padding: 20px; margin-bottom: 15px; background: #fffefe; }
+        .item-card.pendiente { border-left: 5px solid #ffb020; }
+        .item-card.oficial { border-left: 5px solid #2e7d32; }
+        .item-titulo { font-family: 'Griffy', cursive; font-weight: 400; font-size: 1.4rem; color: #40114F; margin-bottom: 4px; }
+        .item-meta { font-size: 0.85rem; color: #7D6D94; margin-bottom: 10px; }
+        .item-meta .badge-suave { background: #f8f5ff; color: #6f42c1; border: 1px dashed #6f42c1; border-radius: 50px; padding: 3px 12px; margin-right: 6px; display: inline-block; margin-bottom: 4px; }
+        .item-descripcion { font-size: 0.95rem; color: #444; margin-bottom: 12px; }
+        .item-extra { background: #f8f5ff; border-radius: 10px; padding: 10px 15px; font-size: 0.88rem; margin-bottom: 12px; }
+        .item-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+        .item-acciones form { margin: 0; }
+        .btn-accion { border: none; padding: 8px 18px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; color: white; }
+        .btn-aprobar { background-color: #2e7d32; }
+        .btn-aprobar:hover { background-color: #256428; color: white; }
+        .btn-despublicar { background-color: #b8860b; }
+        .btn-despublicar:hover { background-color: #966e08; color: white; }
+        .btn-eliminar { background-color: #c62828; }
+        .btn-eliminar:hover { background-color: #a31f1f; color: white; }
+
+        .grupo-actividad { border: 1px solid #eee; border-radius: 15px; margin-bottom: 15px; overflow: hidden; }
+        .grupo-header { background: #40114F; color: white; padding: 12px 20px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .grupo-header .badge-count { background: #6f42c1; border-radius: 50px; padding: 3px 14px; font-size: 0.85rem; }
+        .tabla-scroll { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 14px; border-bottom: 1px solid #eee; text-align: left; font-size: 0.88rem; white-space: nowrap; }
+        th { background-color: #f8f5ff; color: #40114F; font-weight: 600; }
+        tr:last-child td { border-bottom: none; }
     </style>
 </head>
 <body>
@@ -33,61 +58,158 @@
         <a href="{{ url_for('logout') }}" class="btn-logout"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</a>
     </div>
 
-    <h2 class="section-title">Propuestas por Aprobar</h2>
-    {% if propuestas %}
-    <table>
-        <thead><tr><th>Título</th><th>Propuesto por</th><th>Acciones</th></tr></thead>
-        <tbody>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <div class="alert alert-success text-center" style="border-radius: 12px;">{{ messages[0] }}</div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="panel-card">
+        <div class="section-title">
+            <h2>Propuestas por Aprobar</h2>
+            <span class="contador">{{ propuestas|length }} pendiente(s)</span>
+        </div>
+        {% if propuestas %}
+            <input type="text" class="buscador mb-3 filtro-actividades" placeholder="🔎 Buscar por título, categoría o contacto...">
             {% for p in propuestas %}
-            <tr>
-                <td><strong>{{ p.titulo }}</strong></td>
-                <td>{{ p.rol }} ({{ p.contacto }})</td>
-                <td>
-                    <a href="{{ url_for('aprobar_actividad', id=p.id) }}" class="btn-aprobar">Aprobar</a>
-                    <a href="{{ url_for('eliminar_actividad', id=p.id) }}" class="btn-eliminar" onclick="return confirm('¿Borrar propuesta?')">Eliminar</a>
-                </td>
-            </tr>
+            <div class="item-card pendiente" data-buscar="{{ (p.titulo or '') ~ ' ' ~ (p.categoria or '') ~ ' ' ~ (p.contacto or '') }}">
+                <div class="item-titulo">{{ p.titulo }}</div>
+                <div class="item-meta">
+                    <span class="badge-suave"><i class="bi bi-tag"></i> {{ p.categoria or 'Sin categoría' }}</span>
+                    <span class="badge-suave"><i class="bi bi-calendar-event"></i> {{ p.fecha or 'Sin fecha' }}</span>
+                    <span class="badge-suave"><i class="bi bi-person"></i> {{ 'Tutora' if p.rol == 'tutor' else 'Alumna' }}</span>
+                    {% if p.contacto %}<span class="badge-suave"><i class="bi bi-envelope"></i> {{ p.contacto }}</span>{% endif %}
+                </div>
+                <p class="item-descripcion">{{ p.descripcion or 'Sin descripción.' }}</p>
+                {% if p.rol == 'tutor' and (p.habilidad or p.materiales) %}
+                <div class="item-extra">
+                    {% if p.habilidad %}<div><strong>Habilidad a enseñar:</strong> {{ p.habilidad }}</div>{% endif %}
+                    {% if p.materiales %}<div><strong>Materiales / ayuda necesaria:</strong> {{ p.materiales }}</div>{% endif %}
+                </div>
+                {% endif %}
+                <div class="item-acciones">
+                    <form method="POST" action="{{ url_for('aprobar_actividad', id=p.id) }}" class="form-confirmar" data-confirmar="¿Aprobar y publicar “{{ p.titulo }}” en el sitio público?">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-accion btn-aprobar"><i class="bi bi-check-lg"></i> Aprobar</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('eliminar_actividad', id=p.id) }}" class="form-confirmar" data-confirmar="¿Eliminar esta propuesta? No se puede deshacer.">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-accion btn-eliminar"><i class="bi bi-trash"></i> Eliminar</button>
+                    </form>
+                </div>
+            </div>
             {% endfor %}
-        </tbody>
-    </table>
-    {% else %}<p class="no-data">No hay propuestas pendientes.</p>{% endif %}
+        {% else %}<p class="no-data">No hay propuestas pendientes.</p>{% endif %}
+    </div>
 
-    <h2 class="section-title">Actividades Publicadas (Oficiales)</h2>
-    {% if oficiales %}
-    <table>
-        <thead><tr><th>Título</th><th>Categoría</th><th>Acciones</th></tr></thead>
-        <tbody>
+    <div class="panel-card">
+        <div class="section-title">
+            <h2>Actividades Publicadas (Oficiales)</h2>
+            <span class="contador">{{ oficiales|length }} publicada(s)</span>
+        </div>
+        {% if oficiales %}
             {% for o in oficiales %}
-            <tr>
-                <td>{{ o.titulo }}</td>
-                <td>{{ o.categoria }}</td>
-                <td>
-                    <a href="{{ url_for('eliminar_actividad', id=o.id) }}" class="btn-eliminar" onclick="return confirm('¿Eliminar actividad oficial de la web?')">Eliminar de la Web</a>
-                </td>
-            </tr>
+            <div class="item-card oficial" data-buscar="{{ (o.titulo or '') ~ ' ' ~ (o.categoria or '') ~ ' ' ~ (o.contacto or '') }}">
+                <div class="item-titulo">{{ o.titulo }}</div>
+                <div class="item-meta">
+                    <span class="badge-suave"><i class="bi bi-tag"></i> {{ o.categoria or 'Sin categoría' }}</span>
+                    <span class="badge-suave"><i class="bi bi-calendar-event"></i> {{ o.fecha or 'Sin fecha' }}</span>
+                </div>
+                <p class="item-descripcion">{{ o.descripcion or 'Sin descripción.' }}</p>
+                <div class="item-acciones">
+                    <form method="POST" action="{{ url_for('despublicar_actividad', id=o.id) }}" class="form-confirmar" data-confirmar="¿Despublicar “{{ o.titulo }}”? Vuelve a Propuestas por Aprobar, no se borra.">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-accion btn-despublicar"><i class="bi bi-eye-slash"></i> Despublicar</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('eliminar_actividad', id=o.id) }}" class="form-confirmar" data-confirmar="¿Eliminar “{{ o.titulo }}” de la web? No se puede deshacer.">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-accion btn-eliminar"><i class="bi bi-trash"></i> Eliminar de la Web</button>
+                    </form>
+                </div>
+            </div>
             {% endfor %}
-        </tbody>
-    </table>
-    {% else %}<p class="no-data">No hay actividades publicadas.</p>{% endif %}
+        {% else %}<p class="no-data">No hay actividades publicadas.</p>{% endif %}
+    </div>
 
-    <h2 class="section-title">Alumnas Inscritas</h2>
-    {% if inscripciones %}
-    <table>
-        <thead><tr><th>Actividad</th><th>Nombre</th><th>Carrera</th><th>Acciones</th></tr></thead>
-        <tbody>
-            {% for i in inscripciones %}
-            <tr>
-                <td>{{ i.actividad_titulo }}</td>
-                <td>{{ i.nombre_alumna }}</td>
-                <td>{{ i.carrera }}</td>
-                <td>
-                    <a href="{{ url_for('eliminar_inscripcion', id=i.id) }}" class="btn-eliminar" onclick="return confirm('¿Borrar inscripción?')">Borrar</a>
-                </td>
-            </tr>
+    <div class="panel-card">
+        <div class="section-title">
+            <h2>Alumnas Inscritas</h2>
+            <span class="contador">{{ total_inscritas }} inscripción(es) en {{ inscripciones_agrupadas|length }} actividad(es)</span>
+        </div>
+        {% if inscripciones_agrupadas %}
+            <input type="text" class="buscador mb-3 filtro-inscripciones" placeholder="🔎 Buscar por actividad, nombre o carrera...">
+            {% for grupo in inscripciones_agrupadas %}
+            <div class="grupo-actividad" data-buscar="{{ grupo.actividad }}">
+                <div class="grupo-header">
+                    <span><i class="bi bi-people-fill me-2"></i>{{ grupo.actividad }}</span>
+                    <span class="badge-count">{{ grupo.inscritas|length }} inscrita{{ 's' if grupo.inscritas|length != 1 else '' }}</span>
+                </div>
+                <div class="tabla-scroll">
+                <table>
+                    <thead><tr><th>Nombre</th><th>RUT</th><th>Carrera</th><th>¿Antonio Varas?</th><th>Contacto</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                        {% for i in grupo.inscritas %}
+                        <tr data-buscar-fila="{{ (i.nombre_alumna or '') ~ ' ' ~ (i.carrera or '') }}">
+                            <td>{{ i.nombre_alumna }}</td>
+                            <td>{{ i.rut }}</td>
+                            <td>{{ i.carrera }}</td>
+                            <td>{{ i.sede_antonio_varas }}</td>
+                            <td>{{ i.contacto }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('eliminar_inscripcion', id=i.id) }}" class="form-confirmar" data-confirmar="¿Borrar la inscripción de “{{ i.nombre_alumna }}”?">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn-accion btn-eliminar btn-sm"><i class="bi bi-trash"></i> Borrar</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
             {% endfor %}
-        </tbody>
-    </table>
-    {% else %}<p class="no-data">No hay inscripciones aún.</p>{% endif %}
+        {% else %}<p class="no-data">No hay inscripciones aún.</p>{% endif %}
+    </div>
 </div>
+
+<script>
+    document.querySelectorAll('.form-confirmar').forEach(function (form) {
+        form.addEventListener('submit', function (ev) {
+            var mensaje = form.getAttribute('data-confirmar') || '¿Confirmás esta acción?';
+            if (!confirm(mensaje)) ev.preventDefault();
+        });
+    });
+
+    function activarFiltro(inputSelector, itemSelector) {
+        var input = document.querySelector(inputSelector);
+        if (!input) return;
+        input.addEventListener('input', function () {
+            var q = input.value.trim().toLowerCase();
+            document.querySelectorAll(itemSelector).forEach(function (el) {
+                var texto = (el.getAttribute('data-buscar') || '').toLowerCase();
+                el.style.display = texto.includes(q) ? '' : 'none';
+            });
+        });
+    }
+    activarFiltro('.filtro-actividades', '.item-card');
+
+    var inputIns = document.querySelector('.filtro-inscripciones');
+    if (inputIns) {
+        inputIns.addEventListener('input', function () {
+            var q = inputIns.value.trim().toLowerCase();
+            document.querySelectorAll('.grupo-actividad').forEach(function (grupo) {
+                var tituloCoincide = (grupo.getAttribute('data-buscar') || '').toLowerCase().includes(q);
+                var algunaFilaVisible = false;
+                grupo.querySelectorAll('tbody tr').forEach(function (fila) {
+                    var texto = (fila.getAttribute('data-buscar-fila') || '').toLowerCase();
+                    var visible = tituloCoincide || texto.includes(q);
+                    fila.style.display = visible ? '' : 'none';
+                    if (visible) algunaFilaVisible = true;
+                });
+                grupo.style.display = algunaFilaVisible ? '' : 'none';
+            });
+        });
+    }
+</script>
 </body>
 </html>
