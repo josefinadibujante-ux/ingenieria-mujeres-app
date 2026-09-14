@@ -27,7 +27,7 @@
         <div class="row justify-content-center">
             <div class="col-md-7 col-lg-6">
                 <div class="card card-inscripcion p-4">
-                    <h5 class="text-center mb-3">Postulación para:<br><span class="titulo-actividad fs-4">{{ titulo_actividad }}</span></h5>
+                    <h5 class="text-center mb-3">Postulación para:<br><span class="titulo-actividad fs-4">{{ actividad.titulo }}</span></h5>
                     <p class="text-muted small text-center mb-4">Nos contactaremos contigo vía WhatsApp o correo si resultas elegida para participar.</p>
 
                     <form method="POST">
@@ -37,26 +37,27 @@
                             <input type="text" name="nombre" class="form-control" placeholder="Ej: Valentina Paz" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold">RUT</label>
-                            <input type="text" name="rut" class="form-control" placeholder="Ej: 12.345.678-9" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Carrera</label>
-                            <input type="text" name="carrera" class="form-control" placeholder="Ej: Ingeniería en Informática" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">¿Eres de la sede Antonio Varas?</label>
-                            <select name="sede_av" class="form-select" required>
-                                <option value="" disabled selected>Selecciona una opción</option>
-                                <option value="Si">Sí, soy de Antonio Varas</option>
-                                <option value="No">No, soy de otra sede</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
                             <label class="form-label fw-bold">Contacto (Celular o Correo)</label>
                             <input type="text" name="contacto" class="form-control" placeholder="Ej: +569... o correo@uandresbello.edu" required>
                         </div>
-                        <button type="submit" class="btn btn-enviar w-100 mt-2">Enviar mi Postulación</button>
+
+                        {% for campo in campos_extra %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">{{ campo.etiqueta }}{% if not campo.requerido %} <span class="text-muted fw-normal small">(opcional)</span>{% endif %}</label>
+                            {% if campo.tipo == 'opciones' %}
+                            <select name="extra_{{ loop.index0 }}" class="form-select" {% if campo.requerido %}required{% endif %}>
+                                <option value="" disabled selected>Selecciona una opción</option>
+                                {% for opcion in campo.opciones %}
+                                <option value="{{ opcion }}">{{ opcion }}</option>
+                                {% endfor %}
+                            </select>
+                            {% else %}
+                            <input type="text" name="extra_{{ loop.index0 }}" class="form-control" {% if campo.requerido %}required{% endif %}>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+
+                        <button type="submit" class="btn btn-enviar w-100 mt-3">Enviar mi Postulación</button>
                     </form>
                     <div class="text-center mt-3">
                         <a href="{{ url_for('actividades') }}" class="text-decoration-none small text-secondary">← Volver atrás</a>

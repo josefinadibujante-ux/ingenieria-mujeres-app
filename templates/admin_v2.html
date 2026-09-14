@@ -49,9 +49,62 @@
         th, td { padding: 10px 14px; border-bottom: 1px solid #eee; text-align: left; font-size: 0.88rem; white-space: nowrap; }
         th { background-color: #f8f5ff; color: #40114F; font-weight: 600; }
         tr:last-child td { border-bottom: none; }
+
+        .form-builder { background: #f8f5ff; border-radius: 12px; padding: 15px 18px; margin-top: 14px; }
+        .form-builder-titulo { font-weight: 600; color: #6f42c1; font-size: 0.9rem; margin-bottom: 10px; }
+        .lista-campos { list-style: none; padding: 0; margin: 0 0 12px; }
+        .lista-campos li { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: white; border: 1px solid #ebe0ff; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; font-size: 0.85rem; }
+        .lista-campos form { margin: 0; }
+        .btn-quitar-campo { background: none; border: none; color: #c62828; font-size: 0.95rem; padding: 2px 6px; }
+        .btn-quitar-campo:hover { color: #a31f1f; }
+        .sin-campos { font-size: 0.85rem; color: #7D6D94; margin-bottom: 12px; }
+        .form-agregar-campo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .form-agregar-campo input[type="text"], .form-agregar-campo select { border: 1px solid #ebe0ff; border-radius: 8px; padding: 6px 10px; font-size: 0.85rem; font-family: 'Quicksand', sans-serif; }
+        .form-agregar-campo input[name="etiqueta"] { flex: 1 1 180px; }
+        .form-agregar-campo input[name="opciones"] { flex: 1 1 200px; }
+        .check-requerido { font-size: 0.8rem; color: #7D6D94; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+        .btn-agregar-campo { background: #6f42c1; color: white; border: none; border-radius: 8px; padding: 6px 14px; font-size: 0.85rem; font-weight: 600; }
+        .btn-agregar-campo:hover { background: #5a32a3; }
     </style>
 </head>
 <body>
+
+{% macro formulario_builder(actividad) %}
+<div class="form-builder">
+    <div class="form-builder-titulo"><i class="bi bi-ui-checks-grid"></i> Preguntas extra del formulario de inscripción (Nombre y Contacto ya se piden siempre)</div>
+    {% if actividad.campos_inscripcion %}
+    <ul class="lista-campos">
+        {% for campo in actividad.campos_inscripcion %}
+        <li>
+            <span>{{ campo.etiqueta }}{% if not campo.requerido %} <em class="text-muted">(opcional)</em>{% endif %}{% if campo.tipo == 'opciones' %} — {{ campo.opciones|join(' / ') }}{% endif %}</span>
+            <form method="POST" action="{{ url_for('quitar_campo_inscripcion', id=actividad.id) }}" class="form-confirmar" data-confirmar="¿Quitar la pregunta “{{ campo.etiqueta }}” de este formulario?">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="etiqueta" value="{{ campo.etiqueta }}">
+                <input type="hidden" name="tipo" value="{{ campo.tipo }}">
+                <input type="hidden" name="requerido" value="{{ 'on' if campo.requerido else '' }}">
+                {% if campo.tipo == 'opciones' %}<input type="hidden" name="opciones" value="{{ campo.opciones|join(',') }}">{% endif %}
+                <button type="submit" class="btn-quitar-campo" title="Quitar pregunta"><i class="bi bi-x-lg"></i></button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="sin-campos">Por ahora solo se pide nombre y contacto. Agregá una pregunta si necesitás más datos (RUT, carrera, talla, nivel de experiencia...).</p>
+    {% endif %}
+    <form method="POST" action="{{ url_for('agregar_campo_inscripcion', id=actividad.id) }}" class="form-agregar-campo">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="text" name="etiqueta" placeholder="Ej: RUT, Carrera, Talla de polera..." required>
+        <select name="tipo">
+            <option value="texto">Respuesta corta</option>
+            <option value="opciones">Opción múltiple</option>
+        </select>
+        <input type="text" name="opciones" placeholder="Opciones separadas por coma (si aplica)">
+        <label class="check-requerido"><input type="checkbox" name="requerido" checked> Obligatoria</label>
+        <button type="submit" class="btn-agregar-campo"><i class="bi bi-plus-lg"></i> Agregar</button>
+    </form>
+</div>
+{% endmacro %}
+
 <div class="panel">
     <h1>Panel de Control 👑</h1>
     <div class="text-center">
@@ -97,6 +150,7 @@
                         <button type="submit" class="btn-accion btn-eliminar"><i class="bi bi-trash"></i> Eliminar</button>
                     </form>
                 </div>
+                {{ formulario_builder(p) }}
             </div>
             {% endfor %}
         {% else %}<p class="no-data">No hay propuestas pendientes.</p>{% endif %}
@@ -126,6 +180,7 @@
                         <button type="submit" class="btn-accion btn-eliminar"><i class="bi bi-trash"></i> Eliminar de la Web</button>
                     </form>
                 </div>
+                {{ formulario_builder(o) }}
             </div>
             {% endfor %}
         {% else %}<p class="no-data">No hay actividades publicadas.</p>{% endif %}
@@ -146,15 +201,20 @@
                 </div>
                 <div class="tabla-scroll">
                 <table>
-                    <thead><tr><th>Nombre</th><th>RUT</th><th>Carrera</th><th>¿Antonio Varas?</th><th>Contacto</th><th>Acciones</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Contacto</th>
+                            {% for columna in grupo.columnas %}<th>{{ columna }}</th>{% endfor %}
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         {% for i in grupo.inscritas %}
-                        <tr data-buscar-fila="{{ (i.nombre_alumna or '') ~ ' ' ~ (i.carrera or '') }}">
+                        <tr data-buscar-fila="{{ (i.nombre_alumna or '') ~ ' ' ~ ((i.respuestas or {}).values()|join(' ')) }}">
                             <td>{{ i.nombre_alumna }}</td>
-                            <td>{{ i.rut }}</td>
-                            <td>{{ i.carrera }}</td>
-                            <td>{{ i.sede_antonio_varas }}</td>
                             <td>{{ i.contacto }}</td>
+                            {% for columna in grupo.columnas %}<td>{{ (i.respuestas or {}).get(columna, '—') }}</td>{% endfor %}
                             <td>
                                 <form method="POST" action="{{ url_for('eliminar_inscripcion', id=i.id) }}" class="form-confirmar" data-confirmar="¿Borrar la inscripción de “{{ i.nombre_alumna }}”?">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

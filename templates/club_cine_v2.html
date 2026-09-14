@@ -62,7 +62,7 @@
                             <h2 class="pelicula-titulo mt-3">{{ cine.titulo }}</h2>
                             <div class="fecha-tag">📅 {{ cine.fecha if cine.fecha else 'Fecha por confirmar' }}</div>
                             <p class="pelicula-descripcion">{{ cine.descripcion }}</p>
-                            <a href="{{ url_for('inscribir', titulo=cine.titulo) }}" class="btn btn-reserva">Reservar mi butaca</a>
+                            <a href="{{ url_for('inscribir', actividad_id=cine.id) }}" class="btn btn-reserva">Reservar mi butaca</a>
                         </div>
                     </div>
                 </div>

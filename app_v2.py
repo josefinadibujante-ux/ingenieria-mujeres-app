@@ -103,7 +103,11 @@ def info_centro():
 @app.route('/actividades')
 def actividades():
     docs = db.collection("actividades").where("estado", "==", "oficial").stream()
-    lista = [doc.to_dict() for doc in docs]
+    lista = []
+    for doc in docs:
+        a = doc.to_dict()
+        a['id'] = doc.id
+        lista.append(a)
     return render_template('actividades_v2.html', actividades=lista)
 
 @app.route('/proponer', methods=['GET', 'POST'])
@@ -129,25 +133,41 @@ def crear_actividad():
 @app.route('/club_cine')
 def club_cine():
     docs = db.collection("actividades").where("categoria", "==", "Cine").where("estado", "==", "oficial").stream()
-    peliculas = [doc.to_dict() for doc in docs]
+    peliculas = []
+    for doc in docs:
+        p = doc.to_dict()
+        p['id'] = doc.id
+        peliculas.append(p)
     return render_template('club_cine_v2.html', peliculas=peliculas)
 
-@app.route('/inscribir', methods=['GET', 'POST'])
-def inscribir():
-    titulo_act = request.args.get('titulo', 'Actividad')
+@app.route('/inscribir/<actividad_id>', methods=['GET', 'POST'])
+def inscribir(actividad_id):
+    doc = db.collection("actividades").document(actividad_id).get()
+    if not doc.exists:
+        flash("Esa actividad ya no está disponible.")
+        return redirect(url_for('actividades'))
+    actividad = doc.to_dict()
+    actividad['id'] = doc.id
+    # Preguntas que la administradora armó para esta actividad en particular
+    # (además de Nombre y Contacto, que siempre se piden).
+    campos_extra = actividad.get('campos_inscripcion', [])
+
     if request.method == 'POST':
+        respuestas = {}
+        for i, campo in enumerate(campos_extra):
+            respuestas[campo.get('etiqueta', f'Pregunta {i+1}')] = request.form.get(f'extra_{i}', '')
         registro = {
-            "actividad_titulo": titulo_act,
+            "actividad_id": actividad_id,
+            "actividad_titulo": actividad.get('titulo'),
             "nombre_alumna": request.form.get('nombre'),
-            "rut": request.form.get('rut'),
-            "carrera": request.form.get('carrera'),
-            "sede_antonio_varas": request.form.get('sede_av'),
             "contacto": request.form.get('contacto'),
+            "respuestas": respuestas,
             "creado_en": firestore.SERVER_TIMESTAMP,
         }
         db.collection("inscripciones").add(registro)
+        flash("¡Postulación enviada! Te contactaremos pronto.")
         return redirect(url_for('actividades'))
-    return render_template('inscripcion_v2.html', titulo_actividad=titulo_act)
+    return render_template('inscripcion_v2.html', actividad=actividad, campos_extra=campos_extra)
 
 # --- RUTAS ADMINISTRADOR ---
 
@@ -206,10 +226,22 @@ def panel_admin():
         i['id'] = d.id
         titulo = i.get('actividad_titulo') or 'Sin actividad'
         grupos.setdefault(titulo, []).append(i)
-    inscripciones_agrupadas = [
-        {"actividad": titulo, "inscritas": sorted(personas, key=_fecha_orden)}
-        for titulo, personas in sorted(grupos.items())
-    ]
+    inscripciones_agrupadas = []
+    for titulo, personas in sorted(grupos.items()):
+        personas.sort(key=_fecha_orden)
+        # Columnas dinámicas: la unión de las preguntas que efectivamente
+        # contestaron (no depende de las preguntas actuales de la actividad,
+        # así no se pierden respuestas viejas si después se edita el formulario).
+        columnas = []
+        for persona in personas:
+            for etiqueta in (persona.get('respuestas') or {}).keys():
+                if etiqueta not in columnas:
+                    columnas.append(etiqueta)
+        inscripciones_agrupadas.append({
+            "actividad": titulo,
+            "inscritas": personas,
+            "columnas": columnas,
+        })
 
     total_inscritas = sum(len(g["inscritas"]) for g in inscripciones_agrupadas)
 
@@ -231,6 +263,47 @@ def despublicar_actividad(id):
     if session.get('admin_logueado'):
         db.collection("actividades").document(id).update({"estado": "pendiente"})
         flash("Actividad despublicada: volvió a Propuestas por Aprobar.")
+    return redirect(url_for('panel_admin'))
+
+@app.route('/panel-admin/actividad/<id>/campo/agregar', methods=['POST'])
+def agregar_campo_inscripcion(id):
+    if not session.get('admin_logueado'):
+        return redirect(url_for('login'))
+    etiqueta = (request.form.get('etiqueta') or '').strip()
+    tipo = request.form.get('tipo') or 'texto'
+    requerido = request.form.get('requerido') == 'on'
+    if not etiqueta:
+        flash("Escribí el texto de la pregunta antes de agregarla.")
+        return redirect(url_for('panel_admin'))
+    campo = {"etiqueta": etiqueta, "tipo": tipo, "requerido": requerido}
+    if tipo == 'opciones':
+        campo['opciones'] = [o.strip() for o in (request.form.get('opciones') or '').split(',') if o.strip()]
+        if not campo['opciones']:
+            flash("Para una pregunta de opción múltiple escribí al menos una opción.")
+            return redirect(url_for('panel_admin'))
+    # ArrayUnion es atómico: no hace falta leer el documento primero.
+    db.collection("actividades").document(id).update({
+        "campos_inscripcion": firestore.ArrayUnion([campo])
+    })
+    flash(f"Pregunta “{etiqueta}” agregada al formulario de inscripción.")
+    return redirect(url_for('panel_admin'))
+
+@app.route('/panel-admin/actividad/<id>/campo/quitar', methods=['POST'])
+def quitar_campo_inscripcion(id):
+    if not session.get('admin_logueado'):
+        return redirect(url_for('login'))
+    etiqueta = request.form.get('etiqueta', '')
+    tipo = request.form.get('tipo', 'texto')
+    requerido = request.form.get('requerido') == 'on'
+    campo = {"etiqueta": etiqueta, "tipo": tipo, "requerido": requerido}
+    if tipo == 'opciones':
+        campo['opciones'] = [o.strip() for o in (request.form.get('opciones') or '').split(',') if o.strip()]
+    # ArrayRemove borra por igualdad exacta del elemento -- por eso el form
+    # que llama a esta ruta manda de vuelta los mismos datos que se guardaron.
+    db.collection("actividades").document(id).update({
+        "campos_inscripcion": firestore.ArrayRemove([campo])
+    })
+    flash(f"Pregunta “{etiqueta}” quitada del formulario.")
     return redirect(url_for('panel_admin'))
 
 @app.route('/eliminar/<id>', methods=['POST'])
