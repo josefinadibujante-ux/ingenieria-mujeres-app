@@ -55,45 +55,47 @@
 
                 <div class="glass-card">
                     <p class="fs-5 mb-0">
-                        Somos la Comunidad de Mujeres del Campus Antonio Varas. Creemos que el
-                        desarrollo profesional y personal se fortalece con el apoyo mutuo, por eso
-                        buscamos aliarnos con organizaciones, fundaciones, empresas y personas que
-                        compartan nuestra misión: acompañar y potenciar a las mujeres de
-                        ingeniería de nuestra sede.
+                        Somos la Comunidad de Mujeres del Campus Antonio Varas. Creemos firmemente
+                        que el desarrollo profesional y personal se fortalece a través de la red
+                        de apoyo mutuo. Por ello, buscamos establecer alianzas estratégicas con
+                        organizaciones, fundaciones, empresas y profesionales que compartan
+                        nuestra misión de visibilizar, acompañar y potenciar el rol de las mujeres
+                        en la ingeniería.
                     </p>
                 </div>
 
                 <div class="glass-card">
                     <p class="fs-5 mb-0">
-                        Nos entusiasma conectar con agrupaciones de mujeres en STEM o ingeniería,
-                        con ONGs y fundaciones de causas afines, y con empresas comprometidas con
-                        la diversidad y la inclusión. Estos son solo algunos ejemplos de con quién
-                        nos imaginamos trabajando, no una lista cerrada.
+                        Nos entusiasma conectar con agrupaciones de mujeres en STEM,
+                        organizaciones no gubernamentales, fundaciones con causas afines y
+                        empresas comprometidas con la diversidad y la inclusión. Estos espacios
+                        son solo un punto de partida; estamos abiertas a cualquier iniciativa que
+                        sintonice con nuestros valores y propósitos.
                     </p>
                     <p class="fs-5">
-                        Nuestra experiencia indica que los talleres o actividades en conjunto, y
-                        la visibilidad y difusión mutua, son las formas de colaboración que mejor
-                        nos han funcionado hasta ahora. Pero si tienes en mente algo distinto que
-                        se conecte con nuestra misión, cuéntanos igual: preferimos conversarlo
-                        antes que descartarlo solo porque no estaba en nuestros planes.
+                        Nuestra experiencia demuestra que las actividades conjuntas, los talleres
+                        colaborativos y la difusión mutua generan un impacto muy positivo. Si
+                        tienes en mente una propuesta diferente que se alinee con nuestra misión,
+                        te invitamos a compartirla; priorizamos el diálogo y la exploración de
+                        nuevas ideas sobre los esquemas rígidos.
                     </p>
                 </div>
 
                 <div class="glass-card contacto-card">
-                    <h2 class="h4 mb-3">Escríbenos, te leemos con gusto</h2>
-                    <p class="mb-2">Leemos cada mensaje pensando en cómo se conecta con lo que hacemos.<br>Cuéntanos quién eres y qué tienes en mente:</p>
+                    <h2 class="h4 mb-3">Conversemos sobre nuevas iniciativas</h2>
+                    <p class="mb-2">Cada mensaje es evaluado con atención para identificar oportunidades de colaboración genuinas.<br>Cuéntanos quiénes son, cuál es su organización y qué propuesta tienen en mente.</p>
                     <div class="correo-grande" id="correoAlianzas">{{ correo_alianzas }}</div>
 
                     <a href="mailto:{{ correo_alianzas }}?subject={{ 'Propuesta de colaboración con la Comunidad de Mujeres Campus Antonio Varas' | urlencode }}"
                        class="btn-contacto relleno">
-                        <i class="bi bi-envelope-fill me-2"></i>Escribir por correo
+                        <i class="bi bi-envelope-fill me-2"></i>Enviar correo
                     </a>
                     <a href="https://mail.google.com/mail/?view=cm&fs=1&to={{ correo_alianzas }}&su={{ 'Propuesta de colaboración con la Comunidad de Mujeres Campus Antonio Varas' | urlencode }}"
                        target="_blank" rel="noopener" class="btn-contacto">
                         <i class="bi bi-google me-2"></i>Abrir en Gmail
                     </a>
                     <button type="button" class="btn-contacto" id="btnCopiarCorreo" onclick="copiarCorreo()">
-                        <i class="bi bi-clipboard me-2"></i>Copiar correo
+                        <i class="bi bi-clipboard me-2"></i>Copiar dirección de correo
                     </button>
                     <div class="copiado-aviso" id="avisoCopiado">¡Copiado! Ya lo puedes pegar donde quieras.</div>
                 </div>
