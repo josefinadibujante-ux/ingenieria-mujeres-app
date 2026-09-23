@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Trabajemos Juntas · Comunidad de Mujeres Campus Antonio Varas</title>
 
-    <meta name="description" content="¿Sos de una organización, fundación o tenés una idea para colaborar con la Comunidad de Mujeres del Campus Antonio Varas? Escribinos.">
+    <meta name="description" content="¿Eres de una organización, fundación o tienes una idea para colaborar con la Comunidad de Mujeres del Campus Antonio Varas? Escríbenos.">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Trabajemos Juntas · Comunidad de Mujeres Campus Antonio Varas">
-    <meta property="og:description" content="Sumemos fuerzas: organizaciones, fundaciones y personas que quieran co-crear con nuestra comunidad.">
+    <meta property="og:description" content="Alianzas y colaboración: organizaciones, fundaciones y personas que quieran co-crear con nuestra comunidad.">
     <meta property="og:image" content="https://images.unsplash.com/photo-1573163231162-717dfc3e0c1f?auto=format&fit=crop&w=1200&q=80">
 
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
@@ -22,16 +22,8 @@
         h1, h2 { font-family: 'Griffy', cursive !important; font-weight: 400 !important; }
         .glass-card { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; padding: 30px; margin-bottom: 30px; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; z-index: 2; }
         .glass-card:hover { transform: translateY(-6px); box-shadow: 0 15px 30px rgba(0,0,0,0.25); border: 1px solid rgba(255, 255, 255, 0.4); }
+        .glass-card p + p { margin-top: 14px; }
         .flower-decoration { position: absolute; z-index: 1; opacity: 0.25; font-size: 4rem; user-select: none; }
-
-        .categorias { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-top: 10px; }
-        .categoria-item { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 14px; padding: 18px; text-align: center; }
-        .categoria-item i { font-size: 1.8rem; color: #ffd6f0; margin-bottom: 8px; display: block; }
-        .categoria-item span { font-weight: 600; font-size: 0.95rem; }
-
-        .lista-audiencia { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
-        .lista-audiencia li { display: flex; align-items: center; gap: 12px; font-size: 1rem; }
-        .lista-audiencia i { color: #ffd6f0; font-size: 1.2rem; flex-shrink: 0; }
 
         .contacto-card { text-align: center; }
         .correo-grande { font-family: 'Griffy', cursive; font-size: clamp(1.4rem, 5vw, 2.1rem); color: #ffcc00; word-break: break-all; margin: 10px 0 20px; }
@@ -55,7 +47,7 @@
 
         <div class="text-center mb-5">
             <h1 class="display-4 fw-bold">🤝 Trabajemos Juntas</h1>
-            <p>Comunidad de Mujeres · Campus Antonio Varas</p>
+            <p>Alianzas y colaboración con organizaciones externas</p>
         </div>
 
         <div class="row justify-content-center">
@@ -63,40 +55,33 @@
 
                 <div class="glass-card">
                     <p class="fs-5 mb-0">
-                        Somos la Comunidad de Mujeres del Campus Antonio Varas, y creemos que
-                        crecemos más rápido acompañadas. Por eso buscamos aliarnos con
-                        organizaciones, fundaciones, empresas y personas que compartan nuestra
-                        misión: acompañar y potenciar a las mujeres de ingeniería de nuestra sede.
+                        Somos la Comunidad de Mujeres del Campus Antonio Varas. Creemos que el
+                        desarrollo profesional y personal se fortalece con el apoyo mutuo, por eso
+                        buscamos aliarnos con organizaciones, fundaciones, empresas y personas que
+                        compartan nuestra misión: acompañar y potenciar a las mujeres de
+                        ingeniería de nuestra sede.
                     </p>
                 </div>
 
                 <div class="glass-card">
-                    <h2 class="h4 mb-3">¿A quién nos encantaría conocer?</h2>
-                    <ul class="lista-audiencia">
-                        <li><i class="bi bi-people-fill"></i> Otras agrupaciones de mujeres en STEM o ingeniería</li>
-                        <li><i class="bi bi-heart"></i> ONGs y fundaciones con causas afines</li>
-                        <li><i class="bi bi-briefcase"></i> Empresas con programas de diversidad e inclusión</li>
-                        <li><i class="bi bi-stars"></i> Y en general, cualquier propuesta seria que conecte con esta visión</li>
-                    </ul>
-                </div>
-
-                <div class="glass-card">
-                    <h2 class="h4 mb-3">¿Cómo nos gusta colaborar?</h2>
-                    <div class="categorias">
-                        <div class="categoria-item">
-                            <i class="bi bi-easel2"></i>
-                            <span>Talleres o actividades en conjunto</span>
-                        </div>
-                        <div class="categoria-item">
-                            <i class="bi bi-megaphone"></i>
-                            <span>Visibilidad y difusión mutua</span>
-                        </div>
-                    </div>
+                    <p class="fs-5 mb-0">
+                        Nos entusiasma conectar con agrupaciones de mujeres en STEM o ingeniería,
+                        con ONGs y fundaciones de causas afines, y con empresas comprometidas con
+                        la diversidad y la inclusión. Estos son solo algunos ejemplos de con quién
+                        nos imaginamos trabajando, no una lista cerrada.
+                    </p>
+                    <p class="fs-5">
+                        Nuestra experiencia indica que los talleres o actividades en conjunto, y
+                        la visibilidad y difusión mutua, son las formas de colaboración que mejor
+                        nos han funcionado hasta ahora. Pero si tienes en mente algo distinto que
+                        se conecte con nuestra misión, cuéntanos igual: preferimos conversarlo
+                        antes que descartarlo solo porque no estaba en nuestros planes.
+                    </p>
                 </div>
 
                 <div class="glass-card contacto-card">
-                    <h2 class="h4 mb-3">Escribinos, te leemos con gusto</h2>
-                    <p class="mb-2">Leemos cada mensaje pensando en cómo se conecta con lo que hacemos.<br>Contanos quién sos y qué tenés en mente:</p>
+                    <h2 class="h4 mb-3">Escríbenos, te leemos con gusto</h2>
+                    <p class="mb-2">Leemos cada mensaje pensando en cómo se conecta con lo que hacemos.<br>Cuéntanos quién eres y qué tienes en mente:</p>
                     <div class="correo-grande" id="correoAlianzas">{{ correo_alianzas }}</div>
 
                     <a href="mailto:{{ correo_alianzas }}?subject={{ 'Propuesta de colaboración con la Comunidad de Mujeres Campus Antonio Varas' | urlencode }}"
@@ -110,7 +95,7 @@
                     <button type="button" class="btn-contacto" id="btnCopiarCorreo" onclick="copiarCorreo()">
                         <i class="bi bi-clipboard me-2"></i>Copiar correo
                     </button>
-                    <div class="copiado-aviso" id="avisoCopiado">¡Copiado! Ya lo podés pegar donde quieras.</div>
+                    <div class="copiado-aviso" id="avisoCopiado">¡Copiado! Ya lo puedes pegar donde quieras.</div>
                 </div>
 
                 <div class="text-center mt-4">

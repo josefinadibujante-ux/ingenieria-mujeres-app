@@ -276,13 +276,13 @@ def agregar_campo_inscripcion(id):
     tipo = request.form.get('tipo') or 'texto'
     requerido = request.form.get('requerido') == 'on'
     if not etiqueta:
-        flash("Escribí el texto de la pregunta antes de agregarla.")
+        flash("Escribe el texto de la pregunta antes de agregarla.")
         return redirect(url_for('panel_admin'))
     campo = {"etiqueta": etiqueta, "tipo": tipo, "requerido": requerido}
     if tipo == 'opciones':
         campo['opciones'] = [o.strip() for o in (request.form.get('opciones') or '').split(',') if o.strip()]
         if not campo['opciones']:
-            flash("Para una pregunta de opción múltiple escribí al menos una opción.")
+            flash("Para una pregunta de opción múltiple escribe al menos una opción.")
             return redirect(url_for('panel_admin'))
     # ArrayUnion es atómico: no hace falta leer el documento primero.
     db.collection("actividades").document(id).update({

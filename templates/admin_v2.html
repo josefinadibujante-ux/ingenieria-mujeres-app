@@ -89,7 +89,7 @@
         {% endfor %}
     </ul>
     {% else %}
-    <p class="sin-campos">Por ahora solo se pide nombre y contacto. Agregá una pregunta si necesitás más datos (RUT, carrera, talla, nivel de experiencia...).</p>
+    <p class="sin-campos">Por ahora solo se pide nombre y contacto. Agrega una pregunta si necesitas más datos (RUT, carrera, talla, nivel de experiencia...).</p>
     {% endif %}
     <form method="POST" action="{{ url_for('agregar_campo_inscripcion', id=actividad.id) }}" class="form-agregar-campo">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -235,7 +235,7 @@
 <script>
     document.querySelectorAll('.form-confirmar').forEach(function (form) {
         form.addEventListener('submit', function (ev) {
-            var mensaje = form.getAttribute('data-confirmar') || '¿Confirmás esta acción?';
+            var mensaje = form.getAttribute('data-confirmar') || '¿Confirmas esta acción?';
             if (!confirm(mensaje)) ev.preventDefault();
         });
     });
