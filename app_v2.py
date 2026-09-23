@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from collections import OrderedDict
 
 from flask import (
@@ -114,7 +114,10 @@ def actividades():
     for doc in docs:
         a = doc.to_dict()
         a['id'] = doc.id
-        lista.append(a)
+        # No mostramos públicamente actividades cuya fecha ya pasó.
+        if not _actividad_vencida(a):
+            lista.append(a)
+    lista.sort(key=_fecha_actividad_orden)
     return render_template('actividades_v2.html', actividades=lista)
 
 @app.route('/proponer', methods=['GET', 'POST'])
@@ -196,6 +199,19 @@ def _fecha_orden(item):
     return valor
 
 
+def _fecha_actividad_orden(actividad):
+    """Clave de orden por fecha del evento (la más próxima primero). Las
+    actividades sin fecha cargada quedan al final."""
+    return actividad.get('fecha') or '9999-99-99'
+
+
+def _actividad_vencida(actividad):
+    """True si la actividad ya tiene una fecha pasada. Sin fecha cargada no
+    se considera vencida (no hay forma de saberlo)."""
+    fecha = actividad.get('fecha')
+    return bool(fecha) and fecha < date.today().isoformat()
+
+
 @app.route('/panel-admin')
 def panel_admin():
     if not session.get('admin_logueado'):
@@ -211,14 +227,18 @@ def panel_admin():
         lista_prop.append(p)
     lista_prop.sort(key=_fecha_orden)
 
-    # 2. Actividades oficiales (para poder despublicarlas o eliminarlas)
+    # 2. Actividades oficiales (para poder despublicarlas o eliminarlas).
+    #    Se muestran todas -- incluidas las vencidas, marcadas aparte, para
+    #    que la administradora decida si las despublica o las borra -- pero
+    #    ordenadas por la fecha del evento (la más próxima primero).
     oficial_docs = db.collection("actividades").where("estado", "==", "oficial").stream()
     lista_oficiales = []
     for d in oficial_docs:
         o = d.to_dict()
         o['id'] = d.id
+        o['vencida'] = _actividad_vencida(o)
         lista_oficiales.append(o)
-    lista_oficiales.sort(key=_fecha_orden)
+    lista_oficiales.sort(key=_fecha_actividad_orden)
 
     # 3. Inscripciones, agrupadas por actividad para ver de un vistazo
     #    cuántas alumnas se anotaron a cada una.
@@ -345,4 +365,7 @@ def error_interno(e):
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    # use_reloader reinicia solo el proceso al guardar un cambio en el código
+    # (en producción corre con gunicorn, no con esto, así que no aplica ahí).
+    modo_dev = os.environ.get("FLASK_ENV") != "production"
+    app.run(host='0.0.0.0', port=port, use_reloader=modo_dev)

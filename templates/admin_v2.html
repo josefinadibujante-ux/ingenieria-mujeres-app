@@ -26,6 +26,8 @@
         .item-card { border: 1px solid #eee; border-radius: 15px; padding: 20px; margin-bottom: 15px; background: #fffefe; }
         .item-card.pendiente { border-left: 5px solid #ffb020; }
         .item-card.oficial { border-left: 5px solid #2e7d32; }
+        .item-card.oficial.vencida { border-left-color: #999; background: #fafafa; }
+        .badge-vencida { background: #fdecea; color: #a31f1f; border-radius: 50px; padding: 3px 12px; display: inline-block; margin-bottom: 4px; font-weight: 600; }
         .item-titulo { font-family: 'Griffy', cursive; font-weight: 400; font-size: 1.4rem; color: #40114F; margin-bottom: 4px; }
         .item-meta { font-size: 0.85rem; color: #7D6D94; margin-bottom: 10px; }
         .item-meta .badge-suave { background: #f8f5ff; color: #6f42c1; border: 1px dashed #6f42c1; border-radius: 50px; padding: 3px 12px; margin-right: 6px; display: inline-block; margin-bottom: 4px; }
@@ -50,8 +52,14 @@
         th { background-color: #f8f5ff; color: #40114F; font-weight: 600; }
         tr:last-child td { border-bottom: none; }
 
-        .form-builder { background: #f8f5ff; border-radius: 12px; padding: 15px 18px; margin-top: 14px; }
-        .form-builder-titulo { font-weight: 600; color: #6f42c1; font-size: 0.9rem; margin-bottom: 10px; }
+        .form-builder { background: #f8f5ff; border-radius: 12px; padding: 4px 18px; margin-top: 14px; }
+        .form-builder[open] { padding-bottom: 15px; }
+        .form-builder-titulo { font-weight: 600; color: #6f42c1; font-size: 0.9rem; padding: 11px 0; cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+        .form-builder-titulo::-webkit-details-marker { display: none; }
+        .form-builder-titulo::before { content: "▶"; font-size: 0.7rem; display: inline-block; transition: transform 0.2s; }
+        .form-builder[open] > .form-builder-titulo::before { transform: rotate(90deg); }
+        .badge-preguntas { background: #6f42c1; color: white; border-radius: 50px; padding: 2px 10px; font-size: 0.75rem; font-weight: 600; }
+        .form-builder-contenido { padding-top: 4px; }
         .lista-campos { list-style: none; padding: 0; margin: 0 0 12px; }
         .lista-campos li { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: white; border: 1px solid #ebe0ff; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; font-size: 0.85rem; }
         .lista-campos form { margin: 0; }
@@ -70,8 +78,12 @@
 <body>
 
 {% macro formulario_builder(actividad) %}
-<div class="form-builder">
-    <div class="form-builder-titulo"><i class="bi bi-ui-checks-grid"></i> Preguntas extra del formulario de inscripción (Nombre y Contacto ya se piden siempre)</div>
+<details class="form-builder">
+    <summary class="form-builder-titulo">
+        <i class="bi bi-ui-checks-grid"></i> Personalizar formulario de inscripción
+        {% if actividad.campos_inscripcion %}<span class="badge-preguntas">{{ actividad.campos_inscripcion|length }} pregunta{{ 's' if actividad.campos_inscripcion|length != 1 else '' }}</span>{% endif %}
+    </summary>
+    <div class="form-builder-contenido">
     {% if actividad.campos_inscripcion %}
     <ul class="lista-campos">
         {% for campo in actividad.campos_inscripcion %}
@@ -102,7 +114,8 @@
         <label class="check-requerido"><input type="checkbox" name="requerido" checked> Obligatoria</label>
         <button type="submit" class="btn-agregar-campo"><i class="bi bi-plus-lg"></i> Agregar</button>
     </form>
-</div>
+    </div>
+</details>
 {% endmacro %}
 
 <div class="panel">
@@ -163,11 +176,12 @@
         </div>
         {% if oficiales %}
             {% for o in oficiales %}
-            <div class="item-card oficial" data-buscar="{{ (o.titulo or '') ~ ' ' ~ (o.categoria or '') ~ ' ' ~ (o.contacto or '') }}">
+            <div class="item-card oficial{{ ' vencida' if o.vencida else '' }}" data-buscar="{{ (o.titulo or '') ~ ' ' ~ (o.categoria or '') ~ ' ' ~ (o.contacto or '') }}">
                 <div class="item-titulo">{{ o.titulo }}</div>
                 <div class="item-meta">
                     <span class="badge-suave"><i class="bi bi-tag"></i> {{ o.categoria or 'Sin categoría' }}</span>
                     <span class="badge-suave"><i class="bi bi-calendar-event"></i> {{ o.fecha or 'Sin fecha' }}</span>
+                    {% if o.vencida %}<span class="badge-vencida"><i class="bi bi-clock-history"></i> Vencida — ya no aparece en el sitio público</span>{% endif %}
                 </div>
                 <p class="item-descripcion">{{ o.descripcion or 'Sin descripción.' }}</p>
                 <div class="item-acciones">
