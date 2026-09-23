@@ -110,6 +110,23 @@ if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 db = firestore.client()
 
+# Páginas que nunca deben quedar en la caché del navegador (login y todo el
+# panel): si no, en una compu compartida, el botón "Atrás" después de cerrar
+# sesión podría mostrar una versión guardada del panel con datos reales.
+RUTAS_SIN_CACHE = {
+    "login", "logout", "panel_admin",
+    "aprobar_actividad", "despublicar_actividad",
+    "eliminar_actividad", "eliminar_inscripcion",
+    "agregar_campo_inscripcion", "quitar_campo_inscripcion",
+}
+
+@app.after_request
+def _sin_cache_en_admin(response):
+    if request.endpoint in RUTAS_SIN_CACHE:
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+    return response
+
 
 # --- RUTAS PÚBLICAS ---
 
@@ -137,9 +154,30 @@ def actividades():
 CATEGORIAS_VALIDAS = {"Talleres", "Actividades"}
 ROLES_VALIDOS = {"alumno", "tutor"}
 
+# Límite de envíos por IP en los formularios públicos (proponer / inscribir).
+# Más permisivo que el del login a propósito: acá pueden coincidir varias
+# estudiantes reales detrás de la misma IP (wifi del campus, un mismo NAT),
+# así que esto frena spam masivo de bots, no un uso normal concurrente.
+_envios_por_ip = defaultdict(list)
+ENVIOS_MAX = 20
+ENVIOS_VENTANA_SEGUNDOS = 60 * 60  # 1 hora
+
+def _envio_excedido(clave):
+    ahora = time.time()
+    vigentes = [t for t in _envios_por_ip[clave] if ahora - t < ENVIOS_VENTANA_SEGUNDOS]
+    if len(vigentes) >= ENVIOS_MAX:
+        _envios_por_ip[clave] = vigentes
+        return True
+    vigentes.append(ahora)
+    _envios_por_ip[clave] = vigentes
+    return False
+
 @app.route('/proponer', methods=['GET', 'POST'])
 def crear_actividad():
     if request.method == 'POST':
+        if _envio_excedido(f"proponer:{request.remote_addr}"):
+            flash("Demasiadas propuestas enviadas desde acá en poco tiempo. Intenta de nuevo más tarde.")
+            return render_template('proponer_v2.html'), 429
         # El HTML ya exige estos campos, pero eso lo puede saltar cualquiera
         # que mande el POST directo (curl, JS desactivado) -- se revalida acá.
         titulo = (request.form.get('titulo') or '').strip()[:150]
@@ -196,6 +234,9 @@ def inscribir(actividad_id):
     campos_extra = actividad.get('campos_inscripcion', [])
 
     if request.method == 'POST':
+        if _envio_excedido(f"inscribir:{request.remote_addr}"):
+            flash("Demasiadas inscripciones enviadas desde acá en poco tiempo. Intenta de nuevo más tarde.")
+            return render_template('inscripcion_v2.html', actividad=actividad, campos_extra=campos_extra), 429
         nombre = (request.form.get('nombre') or '').strip()[:150]
         contacto = (request.form.get('contacto') or '').strip()[:200]
         if not nombre or not contacto:

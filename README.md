@@ -154,3 +154,12 @@ que actualizar su configuración — no alcanza con hacer `git push`.
 - Validación del lado del servidor en `/proponer` e `/inscribir` (campos
   obligatorios y largo máximo) — el `required` del HTML no alcanza porque
   cualquiera puede mandar el POST directo sin pasar por el formulario.
+- Límite de envíos en `/proponer` e `/inscribir`: 20 por IP por hora (429) —
+  más permisivo que el del login a propósito, porque varias estudiantes
+  reales pueden compartir la misma IP (wifi del campus).
+- El panel de administración y `/login` mandan `Cache-Control: no-store` —
+  para que en una computadora compartida, el botón "Atrás" después de cerrar
+  sesión no muestre una versión guardada en caché del panel.
+- Cookie de sesión con `Secure` (en producción) + `HttpOnly` + `SameSite=Lax`.
+- `/login` siempre redirige a una ruta fija (`/panel-admin`); no acepta
+  ningún parámetro tipo `?next=`, así que no hay riesgo de open redirect ahí.
