@@ -19,9 +19,16 @@
         .contador { font-size: 0.9rem; color: #7D6D94; font-weight: 600; }
         .btn-logout { display: inline-block; margin: 15px 0; background: #7D6D94; color: white; padding: 10px 22px; border-radius: 50px; text-decoration: none; font-weight: 600; }
         .btn-logout:hover { background: #40114F; color: white; }
-        .buscador { border: 1px solid #ebe0ff; border-radius: 50px; padding: 8px 18px; font-size: 0.9rem; min-width: 220px; }
+        .buscador { border: 1px solid #ebe0ff; border-radius: 50px; padding: 8px 18px; font-size: 0.9rem; min-width: 220px; width: 100%; }
         .buscador:focus { outline: none; border-color: #6f42c1; }
         .no-data { text-align: center; color: #999; padding: 20px; }
+
+        .panel-tabs { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 20px 0 25px; }
+        .tab-btn { background: white; border: 2px solid #ebe0ff; color: #7D6D94; border-radius: 50px; padding: 10px 20px; font-weight: 600; font-size: 0.95rem; font-family: 'Quicksand', sans-serif; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
+        .tab-btn:hover { border-color: #6f42c1; color: #6f42c1; }
+        .tab-btn.activo { background: #40114F; border-color: #40114F; color: white; }
+        .tab-btn .tab-count { background: rgba(111, 66, 193, 0.15); color: #6f42c1; border-radius: 50px; padding: 2px 10px; font-size: 0.8rem; }
+        .tab-btn.activo .tab-count { background: rgba(255,255,255,0.2); color: white; }
 
         .item-card { border: 1px solid #eee; border-radius: 15px; padding: 20px; margin-bottom: 15px; background: #fffefe; }
         .item-card.pendiente { border-left: 5px solid #ffb020; }
@@ -51,6 +58,9 @@
         th, td { padding: 10px 14px; border-bottom: 1px solid #eee; text-align: left; font-size: 0.88rem; white-space: nowrap; }
         th { background-color: #f8f5ff; color: #40114F; font-weight: 600; }
         tr:last-child td { border-bottom: none; }
+
+        .btn-ver-mas { display: block; margin: 10px auto 0; background: #f8f5ff; color: #6f42c1; border: 1px dashed #6f42c1; border-radius: 50px; padding: 10px 24px; font-weight: 600; font-size: 0.9rem; font-family: 'Quicksand', sans-serif; cursor: pointer; }
+        .btn-ver-mas:hover { background: #ebe0ff; }
 
         .form-builder { background: #f8f5ff; border-radius: 12px; padding: 4px 18px; margin-top: 14px; }
         .form-builder[open] { padding-bottom: 15px; }
@@ -130,13 +140,26 @@
       {% endif %}
     {% endwith %}
 
-    <div class="panel-card">
+    <div class="panel-tabs">
+        <button type="button" class="tab-btn activo" data-tab="tab-propuestas">
+            <i class="bi bi-hourglass-split"></i> Propuestas <span class="tab-count">{{ propuestas|length }}</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="tab-oficiales">
+            <i class="bi bi-check-circle"></i> Publicadas <span class="tab-count">{{ oficiales|length }}</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="tab-inscritas">
+            <i class="bi bi-people-fill"></i> Inscritas <span class="tab-count">{{ total_inscritas }}</span>
+        </button>
+    </div>
+
+    <div class="panel-card tab-panel" id="tab-propuestas">
         <div class="section-title">
             <h2>Propuestas por Aprobar</h2>
             <span class="contador">{{ propuestas|length }} pendiente(s)</span>
         </div>
         {% if propuestas %}
-            <input type="text" class="buscador mb-3 filtro-actividades" placeholder="🔎 Buscar por título, categoría o contacto...">
+            <input type="text" class="buscador mb-3 filtro-propuestas" placeholder="🔎 Buscar por título, categoría o contacto...">
+            <div id="lista-propuestas">
             {% for p in propuestas %}
             <div class="item-card pendiente" data-buscar="{{ (p.titulo or '') ~ ' ' ~ (p.categoria or '') ~ ' ' ~ (p.contacto or '') }}">
                 <div class="item-titulo">{{ p.titulo }}</div>
@@ -166,15 +189,18 @@
                 {{ formulario_builder(p) }}
             </div>
             {% endfor %}
+            </div>
         {% else %}<p class="no-data">No hay propuestas pendientes.</p>{% endif %}
     </div>
 
-    <div class="panel-card">
+    <div class="panel-card tab-panel" id="tab-oficiales" hidden>
         <div class="section-title">
             <h2>Actividades Publicadas (Oficiales)</h2>
             <span class="contador">{{ oficiales|length }} publicada(s)</span>
         </div>
         {% if oficiales %}
+            <input type="text" class="buscador mb-3 filtro-oficiales" placeholder="🔎 Buscar por título, categoría o contacto...">
+            <div id="lista-oficiales">
             {% for o in oficiales %}
             <div class="item-card oficial{{ ' vencida' if o.vencida else '' }}" data-buscar="{{ (o.titulo or '') ~ ' ' ~ (o.categoria or '') ~ ' ' ~ (o.contacto or '') }}">
                 <div class="item-titulo">{{ o.titulo }}</div>
@@ -197,16 +223,18 @@
                 {{ formulario_builder(o) }}
             </div>
             {% endfor %}
+            </div>
         {% else %}<p class="no-data">No hay actividades publicadas.</p>{% endif %}
     </div>
 
-    <div class="panel-card">
+    <div class="panel-card tab-panel" id="tab-inscritas" hidden>
         <div class="section-title">
             <h2>Alumnas Inscritas</h2>
             <span class="contador">{{ total_inscritas }} inscripción(es) en {{ inscripciones_agrupadas|length }} actividad(es)</span>
         </div>
         {% if inscripciones_agrupadas %}
             <input type="text" class="buscador mb-3 filtro-inscripciones" placeholder="🔎 Buscar por actividad, nombre o carrera...">
+            <div id="lista-inscritas">
             {% for grupo in inscripciones_agrupadas %}
             <div class="grupo-actividad" data-buscar="{{ grupo.actividad }}">
                 <div class="grupo-header">
@@ -242,11 +270,25 @@
                 </div>
             </div>
             {% endfor %}
+            </div>
         {% else %}<p class="no-data">No hay inscripciones aún.</p>{% endif %}
     </div>
 </div>
 
 <script>
+    // --- Pestañas ---
+    var botonesTab = document.querySelectorAll('.tab-btn');
+    botonesTab.forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            botonesTab.forEach(function (b) { b.classList.remove('activo'); });
+            boton.classList.add('activo');
+            document.querySelectorAll('.tab-panel').forEach(function (panel) {
+                panel.hidden = panel.id !== boton.getAttribute('data-tab');
+            });
+        });
+    });
+
+    // --- Confirmaciones ---
     document.querySelectorAll('.form-confirmar').forEach(function (form) {
         form.addEventListener('submit', function (ev) {
             var mensaje = form.getAttribute('data-confirmar') || '¿Confirmas esta acción?';
@@ -254,33 +296,65 @@
         });
     });
 
-    function activarFiltro(inputSelector, itemSelector) {
+    // --- "Ver más": muestra de a 10, para no volcar listas larguísimas ---
+    function activarPaginado(contenedorId, itemSelector, lote) {
+        var contenedor = document.getElementById(contenedorId);
+        if (!contenedor) return null;
+        var items = Array.from(contenedor.querySelectorAll(itemSelector));
+        var mostrados = lote;
+        var boton = document.createElement('button');
+        boton.type = 'button';
+        boton.className = 'btn-ver-mas';
+        function render() {
+            items.forEach(function (el, i) { el.hidden = i >= mostrados; });
+            var restantes = items.length - mostrados;
+            if (restantes <= 0) { boton.hidden = true; return; }
+            boton.hidden = false;
+            boton.textContent = 'Ver ' + Math.min(lote, restantes) + ' más (quedan ' + restantes + ')';
+        }
+        boton.addEventListener('click', function () { mostrados += lote; render(); });
+        contenedor.insertAdjacentElement('afterend', boton);
+        if (items.length > lote) render(); else boton.hidden = true;
+        return {
+            mostrarTodo: function () { items.forEach(function (el) { el.hidden = false; }); boton.hidden = true; },
+            restaurar: function () { mostrados = lote; render(); }
+        };
+    }
+    var pagPropuestas = activarPaginado('lista-propuestas', '.item-card', 10);
+    var pagOficiales = activarPaginado('lista-oficiales', '.item-card', 10);
+    var pagInscritas = activarPaginado('lista-inscritas', '.grupo-actividad', 10);
+
+    // --- Buscadores: al escribir, se muestra todo lo paginado y se filtra ---
+    function activarFiltro(inputSelector, itemSelector, paginador) {
         var input = document.querySelector(inputSelector);
         if (!input) return;
         input.addEventListener('input', function () {
             var q = input.value.trim().toLowerCase();
+            if (paginador) { if (q) paginador.mostrarTodo(); else paginador.restaurar(); }
             document.querySelectorAll(itemSelector).forEach(function (el) {
                 var texto = (el.getAttribute('data-buscar') || '').toLowerCase();
-                el.style.display = texto.includes(q) ? '' : 'none';
+                el.hidden = !texto.includes(q);
             });
         });
     }
-    activarFiltro('.filtro-actividades', '.item-card');
+    activarFiltro('.filtro-propuestas', '#lista-propuestas .item-card', pagPropuestas);
+    activarFiltro('.filtro-oficiales', '#lista-oficiales .item-card', pagOficiales);
 
     var inputIns = document.querySelector('.filtro-inscripciones');
     if (inputIns) {
         inputIns.addEventListener('input', function () {
             var q = inputIns.value.trim().toLowerCase();
-            document.querySelectorAll('.grupo-actividad').forEach(function (grupo) {
+            if (q) { if (pagInscritas) pagInscritas.mostrarTodo(); } else { if (pagInscritas) pagInscritas.restaurar(); }
+            document.querySelectorAll('#lista-inscritas .grupo-actividad').forEach(function (grupo) {
                 var tituloCoincide = (grupo.getAttribute('data-buscar') || '').toLowerCase().includes(q);
                 var algunaFilaVisible = false;
                 grupo.querySelectorAll('tbody tr').forEach(function (fila) {
                     var texto = (fila.getAttribute('data-buscar-fila') || '').toLowerCase();
                     var visible = tituloCoincide || texto.includes(q);
-                    fila.style.display = visible ? '' : 'none';
+                    fila.hidden = !visible;
                     if (visible) algunaFilaVisible = true;
                 });
-                grupo.style.display = algunaFilaVisible ? '' : 'none';
+                grupo.hidden = !algunaFilaVisible;
             });
         });
     }
