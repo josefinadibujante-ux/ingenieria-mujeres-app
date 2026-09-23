@@ -27,10 +27,17 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-inseguro-cambiar-en-produccion")
+# Recarga las plantillas al vuelo en desarrollo (no afecta producción con gunicorn).
+app.config["TEMPLATES_AUTO_RELOAD"] = os.environ.get("FLASK_ENV") != "production"
 
 # Credenciales de administración (nunca hardcodeadas en el código).
 ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "1234")
+
+# Correo para la sección "Trabajemos Juntas" (alianzas con organizaciones).
+# TODO: reemplazar cuando tengan un Gmail dedicado para esto -- de momento se
+# reutiliza el mismo correo/usuario que el Instagram (@ingenierasmasunab).
+CORREO_ALIANZAS = os.environ.get("CORREO_ALIANZAS", "ingenierasmasunab@gmail.com")
 
 # --- PROTECCIÓN CSRF ---
 csrf = CSRFProtect(app)
@@ -130,15 +137,11 @@ def crear_actividad():
         return redirect(url_for('inicio'))
     return render_template('proponer_v2.html')
 
-@app.route('/club_cine')
-def club_cine():
-    docs = db.collection("actividades").where("categoria", "==", "Cine").where("estado", "==", "oficial").stream()
-    peliculas = []
-    for doc in docs:
-        p = doc.to_dict()
-        p['id'] = doc.id
-        peliculas.append(p)
-    return render_template('club_cine_v2.html', peliculas=peliculas)
+@app.route('/trabajemos-juntas')
+def alianzas():
+    # Página puramente estática: sin Firestore de por medio. Solo invita a
+    # organizaciones/fundaciones/personas a escribir por correo.
+    return render_template('alianzas_v2.html', correo_alianzas=CORREO_ALIANZAS)
 
 @app.route('/inscribir/<actividad_id>', methods=['GET', 'POST'])
 def inscribir(actividad_id):
