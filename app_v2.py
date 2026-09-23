@@ -1,6 +1,7 @@
 import os
+import time
 from datetime import datetime, timezone, date
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 from flask import (
     Flask,
@@ -11,6 +12,7 @@ from flask import (
     flash,
     session,
 )
+from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
 from flask_wtf.csrf import CSRFProtect
 from flask_talisman import Talisman
@@ -29,6 +31,12 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-inseguro-cambiar-en-produccion")
 # Recarga las plantillas al vuelo en desarrollo (no afecta producción con gunicorn).
 app.config["TEMPLATES_AUTO_RELOAD"] = os.environ.get("FLASK_ENV") != "production"
+
+# Render (y la mayoría de los hosts) ponen un proxy adelante: sin esto,
+# request.remote_addr devuelve la IP interna del proxy para todo el mundo,
+# no la del visitante real -- rompería el límite de intentos de /login de
+# abajo (bloquearía a todo el mundo junto en vez de a quien falla).
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 # Credenciales de administración (nunca hardcodeadas en el código).
 ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
@@ -120,18 +128,41 @@ def actividades():
     lista.sort(key=_fecha_actividad_orden)
     return render_template('actividades_v2.html', actividades=lista)
 
+CATEGORIAS_VALIDAS = {"Talleres", "Actividades"}
+ROLES_VALIDOS = {"alumno", "tutor"}
+
 @app.route('/proponer', methods=['GET', 'POST'])
 def crear_actividad():
     if request.method == 'POST':
+        # El HTML ya exige estos campos, pero eso lo puede saltar cualquiera
+        # que mande el POST directo (curl, JS desactivado) -- se revalida acá.
+        titulo = (request.form.get('titulo') or '').strip()[:150]
+        descripcion = (request.form.get('descripcion') or '').strip()[:2000]
+        rol = request.form.get('rol') or ''
+        categoria = request.form.get('categoria') or ''
+        contacto = (request.form.get('contacto') or '').strip()[:200]
+        habilidad = (request.form.get('habilidad') or '').strip()[:200]
+        materiales = (request.form.get('materiales') or '').strip()[:500]
+        fecha = (request.form.get('fecha') or '').strip()[:10]
+
+        if not titulo or not descripcion or rol not in ROLES_VALIDOS:
+            flash("Completa el título, la descripción y cómo quieres participar.")
+            return render_template('proponer_v2.html'), 400
+        if categoria not in CATEGORIAS_VALIDAS:
+            categoria = "Talleres"
+        if rol == "tutor" and (not contacto or not habilidad):
+            flash("Como tutora, indica tu habilidad y deja un contacto.")
+            return render_template('proponer_v2.html'), 400
+
         datos = {
-            "titulo": request.form.get('titulo'),
-            "descripcion": request.form.get('descripcion'),
-            "contacto": request.form.get('contacto'),
-            "categoria": request.form.get('categoria'),
-            "rol": request.form.get('rol'),
-            "fecha": request.form.get('fecha'),
-            "habilidad": request.form.get('habilidad'),
-            "materiales": request.form.get('materiales'),
+            "titulo": titulo,
+            "descripcion": descripcion,
+            "contacto": contacto,
+            "categoria": categoria,
+            "rol": rol,
+            "fecha": fecha,
+            "habilidad": habilidad,
+            "materiales": materiales,
             "estado": "pendiente",
             "creado_en": firestore.SERVER_TIMESTAMP,
         }
@@ -159,14 +190,25 @@ def inscribir(actividad_id):
     campos_extra = actividad.get('campos_inscripcion', [])
 
     if request.method == 'POST':
+        nombre = (request.form.get('nombre') or '').strip()[:150]
+        contacto = (request.form.get('contacto') or '').strip()[:200]
+        if not nombre or not contacto:
+            flash("Completa tu nombre y un contacto antes de enviar.")
+            return render_template('inscripcion_v2.html', actividad=actividad, campos_extra=campos_extra), 400
+
         respuestas = {}
         for i, campo in enumerate(campos_extra):
-            respuestas[campo.get('etiqueta', f'Pregunta {i+1}')] = request.form.get(f'extra_{i}', '')
+            valor = (request.form.get(f'extra_{i}') or '').strip()[:300]
+            if campo.get('requerido') and not valor:
+                flash(f"Falta responder “{campo.get('etiqueta', f'Pregunta {i+1}')}”.")
+                return render_template('inscripcion_v2.html', actividad=actividad, campos_extra=campos_extra), 400
+            respuestas[campo.get('etiqueta', f'Pregunta {i+1}')] = valor
+
         registro = {
             "actividad_id": actividad_id,
             "actividad_titulo": actividad.get('titulo'),
-            "nombre_alumna": request.form.get('nombre'),
-            "contacto": request.form.get('contacto'),
+            "nombre_alumna": nombre,
+            "contacto": contacto,
             "respuestas": respuestas,
             "creado_en": firestore.SERVER_TIMESTAMP,
         }
@@ -177,15 +219,38 @@ def inscribir(actividad_id):
 
 # --- RUTAS ADMINISTRADOR ---
 
+# Protección contra fuerza bruta en el login: sin esto, alguien puede probar
+# contraseñas sin parar. En memoria (no Redis) porque el sitio corre con un
+# solo worker de gunicorn -- si algún día se agregan más workers o se hace
+# autoescalado, esto hay que pasarlo a un almacén compartido (Redis, Firestore).
+LOGIN_MAX_INTENTOS = 5
+LOGIN_VENTANA_SEGUNDOS = 15 * 60  # 15 minutos
+_intentos_fallidos = defaultdict(list)
+
+def _login_bloqueado(ip):
+    ahora = time.time()
+    vigentes = [t for t in _intentos_fallidos[ip] if ahora - t < LOGIN_VENTANA_SEGUNDOS]
+    _intentos_fallidos[ip] = vigentes
+    return len(vigentes) >= LOGIN_MAX_INTENTOS
+
+def _registrar_intento_fallido(ip):
+    _intentos_fallidos[ip].append(time.time())
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    ip = request.remote_addr or 'desconocida'
     if request.method == 'POST':
+        if _login_bloqueado(ip):
+            flash("Demasiados intentos fallidos. Intenta de nuevo en unos minutos.")
+            return render_template('login.html'), 429
         email = request.form.get('email')
         password = request.form.get('password')
         if email == ADMIN_USER and password == ADMIN_PASS:
+            _intentos_fallidos.pop(ip, None)
             session['admin_logueado'] = True
             return redirect(url_for('panel_admin'))
         else:
+            _registrar_intento_fallido(ip)
             flash("Credenciales incorrectas.")
     return render_template('login.html')
 
@@ -292,15 +357,15 @@ def despublicar_actividad(id):
 def agregar_campo_inscripcion(id):
     if not session.get('admin_logueado'):
         return redirect(url_for('login'))
-    etiqueta = (request.form.get('etiqueta') or '').strip()
-    tipo = request.form.get('tipo') or 'texto'
+    etiqueta = (request.form.get('etiqueta') or '').strip()[:100]
+    tipo = request.form.get('tipo') if request.form.get('tipo') in ('texto', 'opciones') else 'texto'
     requerido = request.form.get('requerido') == 'on'
     if not etiqueta:
         flash("Escribe el texto de la pregunta antes de agregarla.")
         return redirect(url_for('panel_admin'))
     campo = {"etiqueta": etiqueta, "tipo": tipo, "requerido": requerido}
     if tipo == 'opciones':
-        campo['opciones'] = [o.strip() for o in (request.form.get('opciones') or '').split(',') if o.strip()]
+        campo['opciones'] = [o.strip()[:60] for o in (request.form.get('opciones') or '').split(',') if o.strip()][:20]
         if not campo['opciones']:
             flash("Para una pregunta de opción múltiple escribe al menos una opción.")
             return redirect(url_for('panel_admin'))

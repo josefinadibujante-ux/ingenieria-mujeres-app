@@ -125,3 +125,12 @@ El proyecto está desplegado en Render como
   Flask-Talisman. La CSP permite `cdn.jsdelivr.net`, `cdnjs.cloudflare.com`,
   `fonts.googleapis.com`, `fonts.gstatic.com`, `unpkg.com`,
   `images.unsplash.com` y `www.transparenttextures.com`.
+- Límite de intentos en `/login`: 5 intentos fallidos por IP bloquean esa IP
+  15 minutos (429). En memoria del proceso, pensado para el único worker de
+  gunicorn que usa el `Procfile` — si algún día se agregan más workers o
+  autoescalado, hay que pasar esto a un almacén compartido (Redis, Firestore).
+  `ProxyFix` está activado para que la IP se lea del proxy de Render y no
+  bloquee a todo el mundo junto.
+- Validación del lado del servidor en `/proponer` e `/inscribir` (campos
+  obligatorios y largo máximo) — el `required` del HTML no alcanza porque
+  cualquiera puede mandar el POST directo sin pasar por el formulario.
