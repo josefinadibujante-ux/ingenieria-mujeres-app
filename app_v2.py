@@ -48,6 +48,12 @@ ADMIN_PASS = os.environ.get("ADMIN_PASS", "1234")
 CORREO_ALIANZAS = os.environ.get("CORREO_ALIANZAS", "ingenierasmasunab@gmail.com")
 
 # --- PROTECCIÓN CSRF ---
+# WTF_CSRF_SSL_STRICT exige además el header "Referer" cuando la conexión es
+# HTTPS (como en Render). Se desactiva: algunos navegadores/extensiones de
+# privacidad no mandan ese header ni en el propio sitio, y el token CSRF ya
+# protege lo importante -- sin esto, alguien podía quedar bloqueada del login
+# con un error críptico sin ninguna razón real de seguridad.
+app.config["WTF_CSRF_SSL_STRICT"] = False
 csrf = CSRFProtect(app)
 
 # --- CABECERAS DE SEGURIDAD (CSP + HSTS + anti-clickjacking + nosniff) ---

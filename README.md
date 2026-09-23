@@ -101,18 +101,38 @@ Queda en `http://localhost:5000`. El puerto se puede cambiar con la variable
 
 ## Despliegue en Render
 
-El proyecto está desplegado en Render como
-**`comunidad-mujeres-antoniovaras`**.
+Existe un servicio en Render llamado **`comunidad-mujeres-antoniovaras`**,
+pero quedó configurado para el código y el proyecto de Firebase **viejos**
+(el de antes de esta reconstrucción). Antes de volver a desplegar ahí, hay
+que actualizar su configuración — no alcanza con hacer `git push`.
 
-- **Build command:** `pip install -r requirements.txt`
-- **Start command:** el del `Procfile` → `gunicorn app_v2:app`
-- **Environment:** define `FLASK_SECRET_KEY`, `ADMIN_USER`, `ADMIN_PASS` y
-  `FLASK_ENV=production` en el panel *Environment*.
-- **Secret File:** sube el `key.json` como *Secret File*. Render lo deja en
-  `/etc/secrets/key.json`, así que define además
-  `GOOGLE_APPLICATION_CREDENTIALS=/etc/secrets/key.json`.
-- Render termina el TLS por su cuenta; Talisman envía HSTS y el resto de
-  cabeceras de seguridad detrás de ese proxy.
+**Checklist para cuando decidas publicar:**
+
+1. **Build command:** `pip install -r requirements.txt`
+2. **Start command:** el del `Procfile` → `gunicorn app_v2:app`
+3. **Variables de entorno** (panel *Environment*), todas nuevas o a
+   revisar:
+   - `FLASK_SECRET_KEY` — generá una con
+     `python -c "import secrets; print(secrets.token_hex(32))"`
+   - `ADMIN_USER` / `ADMIN_PASS` — las credenciales reales del panel de
+     administración (nunca `admin`/`1234`, que son solo el valor por
+     defecto en desarrollo).
+   - `FLASK_ENV=production` — activa cookies seguras y desactiva la
+     recarga automática de desarrollo.
+   - `GOOGLE_APPLICATION_CREDENTIALS=/etc/secrets/key.json`
+   - `CORREO_ALIANZAS` — opcional; si no se define, usa
+     `ingenierasmasunab@gmail.com` (ver [CREDENCIALES.md](CREDENCIALES.md)).
+4. **Secret File:** subí el `key.json` del proyecto de Firebase **nuevo**
+   (`web-ingenieras-oficial`, no el viejo `comunidad-mujeres` — ver
+   [CREDENCIALES.md](CREDENCIALES.md)) como *Secret File* con el nombre
+   `key.json`. Render lo deja en `/etc/secrets/key.json`, que es justo la
+   ruta que apunta la variable de arriba.
+5. Render termina el TLS por su cuenta; Talisman envía HSTS y el resto de
+   cabeceras de seguridad detrás de ese proxy — no hace falta configurar
+   nada extra para HTTPS.
+6. Una vez desplegado, probá el login real (con `ADMIN_USER`/`ADMIN_PASS`,
+   no con las credenciales de desarrollo) y que `/actividades` cargue —
+   confirma que Render puede llegar a Firestore con la clave subida.
 
 ## Seguridad
 

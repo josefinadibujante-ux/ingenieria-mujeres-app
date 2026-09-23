@@ -4,7 +4,7 @@ Flask==3.1.2
 Flask-WTF==1.2.2
 flask-talisman==1.1.0
 python-dotenv==1.1.1
-WTForms==3.2.1
+WTForms==3.2.2
 google-api-core==2.28.1
 google-auth==2.45.0
 google-cloud-core==2.5.0
