@@ -154,6 +154,9 @@
         <button type="button" class="tab-btn" data-tab="tab-administradoras">
             <i class="bi bi-shield-lock"></i> Administradoras <span class="tab-count">{{ administradoras|length }}</span>
         </button>
+        <button type="button" class="tab-btn" data-tab="tab-actividad">
+            <i class="bi bi-clock-history"></i> Actividad <span class="tab-count">{{ registro|length }}</span>
+        </button>
     </div>
 
     <div class="panel-card tab-panel" id="tab-propuestas">
@@ -320,6 +323,30 @@
             </div>
         </div>
     </div>
+
+    <div class="panel-card tab-panel" id="tab-actividad" hidden>
+        <div class="section-title">
+            <h2>Actividad Reciente</h2>
+            <span class="contador">Últimas {{ registro|length }} acciones</span>
+        </div>
+        {% if registro %}
+        <div class="tabla-scroll">
+        <table id="tabla-actividad">
+            <thead><tr><th>Cuándo</th><th>Quién</th><th>Acción</th><th>Detalle</th></tr></thead>
+            <tbody id="lista-actividad">
+                {% for r in registro %}
+                <tr>
+                    <td>{{ r.creado_en | fecha_legible }}</td>
+                    <td>{{ r.admin_email or 'desconocida' }}</td>
+                    <td>{{ r.accion }}</td>
+                    <td>{{ r.detalle or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}<p class="no-data">Todavía no hay actividad registrada.</p>{% endif %}
+    </div>
 </div>
 
 <script>
@@ -360,7 +387,11 @@
             boton.textContent = 'Ver ' + Math.min(lote, restantes) + ' más (quedan ' + restantes + ')';
         }
         boton.addEventListener('click', function () { mostrados += lote; render(); });
-        contenedor.insertAdjacentElement('afterend', boton);
+        // Si el contenedor es un <tbody> (tabla de Actividad), el botón no
+        // puede ir "afterend" de eso -- HTML inválido, el navegador lo saca
+        // del lugar. Va después de la <table> entera en ese caso.
+        var puntoInsercion = contenedor.closest('table') || contenedor;
+        puntoInsercion.insertAdjacentElement('afterend', boton);
         if (items.length > lote) render(); else boton.hidden = true;
         return {
             mostrarTodo: function () { items.forEach(function (el) { el.hidden = false; }); boton.hidden = true; },
@@ -370,6 +401,7 @@
     var pagPropuestas = activarPaginado('lista-propuestas', '.item-card', 10);
     var pagOficiales = activarPaginado('lista-oficiales', '.item-card', 10);
     var pagInscritas = activarPaginado('lista-inscritas', '.grupo-actividad', 10);
+    activarPaginado('lista-actividad', 'tr', 15);
 
     // --- Buscadores: al escribir, se muestra todo lo paginado y se filtra ---
     function activarFiltro(inputSelector, itemSelector, paginador) {

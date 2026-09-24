@@ -111,6 +111,31 @@ if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 db = firestore.client()
 
+
+def _registrar_actividad(accion, detalle=""):
+    """Deja constancia en Firestore de quién hizo qué desde el panel --
+    ahora que puede haber varias administradoras, importa poder verlo.
+    Nunca debe hacer que la acción principal falle si esto falla."""
+    try:
+        db.collection("registro_actividad").add({
+            "accion": accion,
+            "detalle": detalle,
+            "admin_email": session.get("admin_email", "desconocida"),
+            "creado_en": firestore.SERVER_TIMESTAMP,
+        })
+    except Exception as e:
+        print(f"No se pudo registrar la actividad: {e}")
+
+
+@app.template_filter('fecha_legible')
+def fecha_legible(valor):
+    if not valor:
+        return "—"
+    try:
+        return valor.strftime('%d %b %Y, %H:%M')
+    except (AttributeError, ValueError):
+        return str(valor)
+
 # Páginas que nunca deben quedar en la caché del navegador (login y todo el
 # panel): si no, en una compu compartida, el botón "Atrás" después de cerrar
 # sesión podría mostrar una versión guardada del panel con datos reales.
@@ -411,26 +436,44 @@ def panel_admin():
         lista_admins.append(a)
     lista_admins.sort(key=lambda a: a.get('email') or '')
 
+    # 5. Registro de actividad: quién hizo qué, más reciente primero. Con un
+    #    tope -- para un sitio de este tamaño alcanza y sobra, y evita traer
+    #    una colección que podría crecer sin límite con los meses.
+    log_docs = (
+        db.collection("registro_actividad")
+        .order_by("creado_en", direction=firestore.Query.DESCENDING)
+        .limit(200)
+        .stream()
+    )
+    registro = [d.to_dict() for d in log_docs]
+
     return render_template('admin_v2.html',
                            propuestas=lista_prop,
                            oficiales=lista_oficiales,
                            inscripciones_agrupadas=inscripciones_agrupadas,
                            total_inscritas=total_inscritas,
                            administradoras=lista_admins,
-                           mi_correo=session.get('admin_email', ''))
+                           mi_correo=session.get('admin_email', ''),
+                           registro=registro)
 
 @app.route('/aprobar/<id>', methods=['POST'])
 def aprobar_actividad(id):
     if _esta_logueada():
-        db.collection("actividades").document(id).update({"estado": "oficial"})
+        ref = db.collection("actividades").document(id)
+        doc = ref.get()
+        ref.update({"estado": "oficial"})
         flash("Actividad aprobada y publicada.")
+        _registrar_actividad("Aprobó actividad", (doc.to_dict() or {}).get('titulo', id) if doc.exists else id)
     return redirect(url_for('panel_admin'))
 
 @app.route('/despublicar/<id>', methods=['POST'])
 def despublicar_actividad(id):
     if _esta_logueada():
-        db.collection("actividades").document(id).update({"estado": "pendiente"})
+        ref = db.collection("actividades").document(id)
+        doc = ref.get()
+        ref.update({"estado": "pendiente"})
         flash("Actividad despublicada: volvió a Propuestas por Aprobar.")
+        _registrar_actividad("Despublicó actividad", (doc.to_dict() or {}).get('titulo', id) if doc.exists else id)
     return redirect(url_for('panel_admin'))
 
 @app.route('/panel-admin/actividad/<id>/campo/agregar', methods=['POST'])
@@ -454,6 +497,7 @@ def agregar_campo_inscripcion(id):
         "campos_inscripcion": firestore.ArrayUnion([campo])
     })
     flash(f"Pregunta “{etiqueta}” agregada al formulario de inscripción.")
+    _registrar_actividad("Agregó pregunta de inscripción", f"“{etiqueta}” en {id}")
     return redirect(url_for('panel_admin'))
 
 @app.route('/panel-admin/actividad/<id>/campo/quitar', methods=['POST'])
@@ -472,14 +516,19 @@ def quitar_campo_inscripcion(id):
         "campos_inscripcion": firestore.ArrayRemove([campo])
     })
     flash(f"Pregunta “{etiqueta}” quitada del formulario.")
+    _registrar_actividad("Quitó pregunta de inscripción", f"“{etiqueta}” en {id}")
     return redirect(url_for('panel_admin'))
 
 @app.route('/eliminar/<id>', methods=['POST'])
 def eliminar_actividad(id):
     if _esta_logueada():
         try:
-            db.collection("actividades").document(id).delete()
+            ref = db.collection("actividades").document(id)
+            doc = ref.get()
+            titulo = (doc.to_dict() or {}).get('titulo', id) if doc.exists else id
+            ref.delete()
             flash("Actividad eliminada correctamente.")
+            _registrar_actividad("Eliminó actividad", titulo)
         except Exception as e:
             print(f"Error al eliminar: {e}")
     return redirect(url_for('panel_admin'))
@@ -487,8 +536,12 @@ def eliminar_actividad(id):
 @app.route('/eliminar_inscripcion/<id>', methods=['POST'])
 def eliminar_inscripcion(id):
     if _esta_logueada():
-        db.collection("inscripciones").document(id).delete()
+        ref = db.collection("inscripciones").document(id)
+        doc = ref.get()
+        nombre = (doc.to_dict() or {}).get('nombre_alumna', id) if doc.exists else id
+        ref.delete()
         flash("Inscripción eliminada.")
+        _registrar_actividad("Eliminó inscripción", nombre)
     return redirect(url_for('panel_admin'))
 
 @app.route('/panel-admin/administradoras/agregar', methods=['POST'])
@@ -513,6 +566,7 @@ def agregar_administradora():
         "creado_en": firestore.SERVER_TIMESTAMP,
     })
     flash(f"Cuenta creada para “{email}”.")
+    _registrar_actividad("Creó cuenta de administradora", email)
     return redirect(url_for('panel_admin'))
 
 @app.route('/panel-admin/administradoras/eliminar/<id>', methods=['POST'])
@@ -523,8 +577,10 @@ def eliminar_administradora(id):
     if doc.exists and (doc.to_dict().get('email') or '') == session.get('admin_email'):
         flash("No puedes eliminar la cuenta con la que estás conectada ahora mismo.")
         return redirect(url_for('panel_admin'))
+    email_eliminado = (doc.to_dict() or {}).get('email', id) if doc.exists else id
     db.collection('administradoras').document(id).delete()
     flash("Cuenta de administradora eliminada.")
+    _registrar_actividad("Eliminó cuenta de administradora", email_eliminado)
     return redirect(url_for('panel_admin'))
 
 @app.route('/logout')

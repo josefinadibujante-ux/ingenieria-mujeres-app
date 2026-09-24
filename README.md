@@ -119,6 +119,11 @@ Queda en `http://localhost:5000`. El puerto se puede cambiar con la variable
   desde la pestaña "Administradoras" del panel; además de las cuentas acá,
   la cuenta única por `ADMIN_USER`/`ADMIN_PASS` sigue funcionando siempre
   como respaldo, aunque no aparezca en esta colección.
+- **`registro_actividad`**: `accion`, `detalle`, `admin_email`, `creado_en`.
+  Se escribe automáticamente en cada acción del panel que cambia datos
+  (aprobar, despublicar, eliminar, agregar/quitar pregunta, crear/eliminar
+  administradora) — se ve en la pestaña "Actividad", que muestra las
+  últimas 200 entradas, más reciente primero.
 
 ## Despliegue en Render
 
