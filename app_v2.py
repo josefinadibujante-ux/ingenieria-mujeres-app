@@ -13,6 +13,7 @@ from flask import (
     session,
 )
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from flask_wtf.csrf import CSRFProtect
 from flask_talisman import Talisman
@@ -118,6 +119,7 @@ RUTAS_SIN_CACHE = {
     "aprobar_actividad", "despublicar_actividad",
     "eliminar_actividad", "eliminar_inscripcion",
     "agregar_campo_inscripcion", "quitar_campo_inscripcion",
+    "agregar_administradora", "eliminar_administradora",
 }
 
 @app.after_request
@@ -283,6 +285,25 @@ def _login_bloqueado(ip):
 def _registrar_intento_fallido(ip):
     _intentos_fallidos[ip].append(time.time())
 
+
+def _esta_logueada():
+    return bool(session.get('admin_email'))
+
+
+def _verificar_administradora(email, password):
+    """Primero busca la cuenta en Firestore (varias administradoras, con
+    contraseña hasheada); si no hay ninguna que coincida, cae a la cuenta
+    única por variables de entorno -- así nunca queda nadie bloqueada del
+    todo si algo falla con la colección de Firestore."""
+    email = (email or '').strip().lower()
+    if not email or not password:
+        return False
+    docs = list(db.collection('administradoras').where('email', '==', email).limit(1).stream())
+    if docs:
+        datos = docs[0].to_dict()
+        return check_password_hash(datos.get('password_hash', ''), password)
+    return email == ADMIN_USER.strip().lower() and password == ADMIN_PASS
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     ip = request.remote_addr or 'desconocida'
@@ -290,11 +311,11 @@ def login():
         if _login_bloqueado(ip):
             flash("Demasiados intentos fallidos. Intenta de nuevo en unos minutos.")
             return render_template('login.html'), 429
-        email = request.form.get('email')
-        password = request.form.get('password')
-        if email == ADMIN_USER and password == ADMIN_PASS:
+        email = (request.form.get('email') or '').strip()
+        password = request.form.get('password') or ''
+        if _verificar_administradora(email, password):
             _intentos_fallidos.pop(ip, None)
-            session['admin_logueado'] = True
+            session['admin_email'] = email.lower()
             return redirect(url_for('panel_admin'))
         else:
             _registrar_intento_fallido(ip)
@@ -326,7 +347,7 @@ def _actividad_vencida(actividad):
 
 @app.route('/panel-admin')
 def panel_admin():
-    if not session.get('admin_logueado'):
+    if not _esta_logueada():
         return redirect(url_for('login'))
 
     # 1. Propuestas pendientes (con todos los datos que mandó la persona,
@@ -380,29 +401,41 @@ def panel_admin():
 
     total_inscritas = sum(len(g["inscritas"]) for g in inscripciones_agrupadas)
 
+    # 4. Administradoras (cuentas en Firestore -- no incluye la cuenta única
+    #    de respaldo por variables de entorno, que no vive en la base).
+    admin_docs = db.collection("administradoras").stream()
+    lista_admins = []
+    for d in admin_docs:
+        a = d.to_dict()
+        a['id'] = d.id
+        lista_admins.append(a)
+    lista_admins.sort(key=lambda a: a.get('email') or '')
+
     return render_template('admin_v2.html',
                            propuestas=lista_prop,
                            oficiales=lista_oficiales,
                            inscripciones_agrupadas=inscripciones_agrupadas,
-                           total_inscritas=total_inscritas)
+                           total_inscritas=total_inscritas,
+                           administradoras=lista_admins,
+                           mi_correo=session.get('admin_email', ''))
 
 @app.route('/aprobar/<id>', methods=['POST'])
 def aprobar_actividad(id):
-    if session.get('admin_logueado'):
+    if _esta_logueada():
         db.collection("actividades").document(id).update({"estado": "oficial"})
         flash("Actividad aprobada y publicada.")
     return redirect(url_for('panel_admin'))
 
 @app.route('/despublicar/<id>', methods=['POST'])
 def despublicar_actividad(id):
-    if session.get('admin_logueado'):
+    if _esta_logueada():
         db.collection("actividades").document(id).update({"estado": "pendiente"})
         flash("Actividad despublicada: volvió a Propuestas por Aprobar.")
     return redirect(url_for('panel_admin'))
 
 @app.route('/panel-admin/actividad/<id>/campo/agregar', methods=['POST'])
 def agregar_campo_inscripcion(id):
-    if not session.get('admin_logueado'):
+    if not _esta_logueada():
         return redirect(url_for('login'))
     etiqueta = (request.form.get('etiqueta') or '').strip()[:100]
     tipo = request.form.get('tipo') if request.form.get('tipo') in ('texto', 'opciones') else 'texto'
@@ -425,7 +458,7 @@ def agregar_campo_inscripcion(id):
 
 @app.route('/panel-admin/actividad/<id>/campo/quitar', methods=['POST'])
 def quitar_campo_inscripcion(id):
-    if not session.get('admin_logueado'):
+    if not _esta_logueada():
         return redirect(url_for('login'))
     etiqueta = request.form.get('etiqueta', '')
     tipo = request.form.get('tipo', 'texto')
@@ -443,7 +476,7 @@ def quitar_campo_inscripcion(id):
 
 @app.route('/eliminar/<id>', methods=['POST'])
 def eliminar_actividad(id):
-    if session.get('admin_logueado'):
+    if _esta_logueada():
         try:
             db.collection("actividades").document(id).delete()
             flash("Actividad eliminada correctamente.")
@@ -453,14 +486,50 @@ def eliminar_actividad(id):
 
 @app.route('/eliminar_inscripcion/<id>', methods=['POST'])
 def eliminar_inscripcion(id):
-    if session.get('admin_logueado'):
+    if _esta_logueada():
         db.collection("inscripciones").document(id).delete()
         flash("Inscripción eliminada.")
     return redirect(url_for('panel_admin'))
 
+@app.route('/panel-admin/administradoras/agregar', methods=['POST'])
+def agregar_administradora():
+    if not _esta_logueada():
+        return redirect(url_for('login'))
+    email = (request.form.get('email') or '').strip().lower()
+    password = request.form.get('password') or ''
+    if not email or '@' not in email:
+        flash("Escribe un correo válido para la nueva administradora.")
+        return redirect(url_for('panel_admin'))
+    if len(password) < 8:
+        flash("La contraseña debe tener al menos 8 caracteres.")
+        return redirect(url_for('panel_admin'))
+    existe = list(db.collection('administradoras').where('email', '==', email).limit(1).stream())
+    if existe or email == ADMIN_USER.strip().lower():
+        flash(f"Ya existe una cuenta con el correo “{email}”.")
+        return redirect(url_for('panel_admin'))
+    db.collection('administradoras').add({
+        "email": email,
+        "password_hash": generate_password_hash(password),
+        "creado_en": firestore.SERVER_TIMESTAMP,
+    })
+    flash(f"Cuenta creada para “{email}”.")
+    return redirect(url_for('panel_admin'))
+
+@app.route('/panel-admin/administradoras/eliminar/<id>', methods=['POST'])
+def eliminar_administradora(id):
+    if not _esta_logueada():
+        return redirect(url_for('login'))
+    doc = db.collection('administradoras').document(id).get()
+    if doc.exists and (doc.to_dict().get('email') or '') == session.get('admin_email'):
+        flash("No puedes eliminar la cuenta con la que estás conectada ahora mismo.")
+        return redirect(url_for('panel_admin'))
+    db.collection('administradoras').document(id).delete()
+    flash("Cuenta de administradora eliminada.")
+    return redirect(url_for('panel_admin'))
+
 @app.route('/logout')
 def logout():
-    session.pop('admin_logueado', None)
+    session.pop('admin_email', None)
     return redirect(url_for('inicio'))
 
 

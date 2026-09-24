@@ -77,27 +77,48 @@ Queda en `http://localhost:5000`. El puerto se puede cambiar con la variable
 
 ## Rutas
 
-| Ruta                        | Descripción                                    |
-|-----------------------------|-----------------------------------------------|
-| `/`                         | Inicio                                         |
-| `/info_centro`              | Quiénes somos                                  |
-| `/actividades`              | Talleres oficiales                             |
-| `/proponer`                 | Formulario de propuesta (alumna / tutora)      |
-| `/club_cine`                | Cartelera del club de cine                     |
-| `/inscribir?titulo=...`     | Inscripción a una actividad                    |
-| `/login`                    | Acceso administrativo                          |
-| `/panel-admin`              | Panel: propuestas, actividades e inscripciones |
-| `/aprobar/<id>`             | Aprueba una propuesta (pasa a `oficial`)       |
-| `/eliminar/<id>`            | Elimina una actividad                          |
-| `/eliminar_inscripcion/<id>`| Elimina una inscripción                        |
-| `/logout`                   | Cierra sesión                                  |
+**Públicas:**
+
+| Ruta                          | Descripción                                      |
+|-------------------------------|--------------------------------------------------|
+| `/`                            | Inicio                                            |
+| `/info_centro`                 | Quiénes somos                                     |
+| `/actividades`                 | Talleres/actividades oficiales, sin las vencidas  |
+| `/proponer`                    | Formulario de propuesta (alumna / tutora)         |
+| `/trabajemos-juntas`           | Alianzas con organizaciones externas (estática)   |
+| `/inscribir/<actividad_id>`    | Inscripción a una actividad, con sus preguntas propias |
+
+**Administración** (requieren sesión, si no redirige a `/login`):
+
+| Ruta                                              | Descripción                              |
+|----------------------------------------------------|-------------------------------------------|
+| `/login`                                           | Acceso administrativo                     |
+| `/logout`                                          | Cierra sesión                             |
+| `/panel-admin`                                     | Panel con pestañas (propuestas, publicadas, inscritas, administradoras) |
+| `/aprobar/<id>`                                    | Aprueba una propuesta (pasa a `oficial`)  |
+| `/despublicar/<id>`                                | Vuelve una actividad oficial a pendiente  |
+| `/eliminar/<id>`                                   | Elimina una actividad                     |
+| `/eliminar_inscripcion/<id>`                       | Elimina una inscripción                   |
+| `/panel-admin/actividad/<id>/campo/agregar`        | Agrega una pregunta al formulario de una actividad |
+| `/panel-admin/actividad/<id>/campo/quitar`         | Quita una pregunta                        |
+| `/panel-admin/administradoras/agregar`             | Crea una cuenta de administradora nueva   |
+| `/panel-admin/administradoras/eliminar/<id>`       | Elimina el acceso de una administradora   |
 
 ## Base de datos (Firestore)
 
-- **`actividades`**: `titulo`, `descripcion`, `contacto`, `categoria`, `rol`,
-  `fecha`, `habilidad`, `materiales`, `estado` (`pendiente` | `oficial`).
-- **`inscripciones`**: `actividad_titulo`, `nombre_alumna`, `rut`, `carrera`,
-  `sede_antonio_varas`, `contacto`.
+- **`actividades`**: `titulo`, `descripcion`, `contacto`, `categoria`
+  (`Talleres`|`Actividades`), `rol` (`alumno`|`tutor`), `fecha`, `habilidad`,
+  `materiales`, `estado` (`pendiente`|`oficial`), `creado_en`,
+  `campos_inscripcion` (lista de `{etiqueta, tipo, requerido, opciones?}` —
+  las preguntas que arma la administradora para inscribirse a esa actividad).
+- **`inscripciones`**: `actividad_id`, `actividad_titulo`, `nombre_alumna`,
+  `contacto`, `respuestas` (mapa `etiqueta -> valor`, según las
+  `campos_inscripcion` de la actividad), `creado_en`.
+- **`administradoras`**: `email`, `password_hash` (nunca en texto plano —
+  `werkzeug.security.generate_password_hash`), `creado_en`. Se gestionan
+  desde la pestaña "Administradoras" del panel; además de las cuentas acá,
+  la cuenta única por `ADMIN_USER`/`ADMIN_PASS` sigue funcionando siempre
+  como respaldo, aunque no aparezca en esta colección.
 
 ## Despliegue en Render
 
@@ -136,7 +157,14 @@ que actualizar su configuración — no alcanza con hacer `git push`.
 
 ## Seguridad
 
-- Credenciales de administración fuera del código, en variables de entorno.
+- Credenciales de administración fuera del código, en variables de entorno
+  (cuenta de respaldo) o hasheadas en Firestore (cuentas de la colección
+  `administradoras`) — nunca en texto plano en ningún lado.
+- Varias administradoras posibles, cada una con su propio correo/contraseña
+  (colección `administradoras`, gestionada desde el panel). Todas tienen los
+  mismos permisos por ahora — no hay niveles de acceso. Una administradora
+  no puede eliminar su propia cuenta desde la interfaz (para no quedar
+  bloqueada sin querer).
 - CSRF en todos los formularios POST (`csrf_token` de Flask-WTF). Las acciones
   del panel admin (aprobar, despublicar, eliminar, borrar inscripción) son
   formularios POST, no links GET — así no se pueden disparar sin querer ni sin
