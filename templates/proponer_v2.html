@@ -40,6 +40,12 @@
                 <div class="card card-form p-4 animate__animated animate__fadeIn">
                     <h2 class="griffy-text text-center mb-4">🤝 Proponer Actividad</h2>
 
+                    {% with messages = get_flashed_messages() %}
+                      {% if messages %}
+                      <div class="alert alert-danger" style="border-radius: 12px;">{{ messages[0] }}</div>
+                      {% endif %}
+                    {% endwith %}
+
                     <form method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 

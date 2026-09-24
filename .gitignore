@@ -18,3 +18,8 @@ PROMPT_FINAL_CLAUDE_CODE.md
 .DS_Store
 .vscode/
 .idea/
+
+# Revisión de seguridad hecha para pedir opinión externa (no es del sitio)
+REVISION_TECNICA_PARA_GEMINI.md
+
+.pytest_cache/

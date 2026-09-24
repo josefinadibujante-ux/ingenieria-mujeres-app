@@ -30,6 +30,12 @@
                     <h5 class="text-center mb-3">Postulación para:<br><span class="titulo-actividad fs-4">{{ actividad.titulo }}</span></h5>
                     <p class="text-muted small text-center mb-4">Nos contactaremos contigo vía WhatsApp o correo si resultas elegida para participar.</p>
 
+                    {% with messages = get_flashed_messages() %}
+                      {% if messages %}
+                      <div class="alert alert-danger" style="border-radius: 12px;">{{ messages[0] }}</div>
+                      {% endif %}
+                    {% endwith %}
+
                     <form method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">

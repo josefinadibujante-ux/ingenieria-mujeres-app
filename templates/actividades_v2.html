@@ -44,6 +44,12 @@
     <div class="container">
         <h1 class="section-title">Nuestros Talleres</h1>
 
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+          <div class="alert alert-success text-center mb-4" style="border-radius: 12px;">{{ messages[0] }}</div>
+          {% endif %}
+        {% endwith %}
+
         <div class="row justify-content-center">
             {% for act in actividades %}
             <div class="col-lg-6">

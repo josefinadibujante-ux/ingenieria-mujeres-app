@@ -160,6 +160,32 @@ que actualizar su configuración — no alcanza con hacer `git push`.
    no con las credenciales de desarrollo) y que `/actividades` cargue —
    confirma que Render puede llegar a Firestore con la clave subida.
 
+## Tests
+
+Suite de `pytest` en `tests/` que cubre páginas públicas, cabeceras de
+seguridad, login (credenciales, CSRF, límite de intentos), administradoras
+(crear/eliminar cuentas, autoeliminación bloqueada), formularios (proponer,
+inscribir, validación, límite de envíos) y el flujo completo del panel
+(proponer → aprobar → publicada → despublicar → eliminar, formulario de
+inscripción personalizable, registro de actividad).
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+**Importante: los tests corren contra tu Firestore real** (el mismo que
+`python app_v2.py`, según tus variables de entorno) — no hay una base de
+datos de prueba separada. Por eso:
+
+- Usan una cuenta de administradora fija (`admin@pytest.local`) en vez de
+  tu `ADMIN_USER`/`ADMIN_PASS` real, para no depender de tu `.env`.
+- Todo lo que crean lleva una marca interna y se borra solo al terminar —
+  incluso si una corrida se corta a la mitad por un error, la siguiente
+  corrida barre cualquier resto antes de empezar.
+- No hace falta (ni conviene) correrlos apuntando a una base con datos
+  reales de estudiantes sin haber revisado antes `tests/conftest.py`.
+
 ## Seguridad
 
 - Credenciales de administración fuera del código, en variables de entorno

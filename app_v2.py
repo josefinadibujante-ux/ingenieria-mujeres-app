@@ -492,12 +492,14 @@ def agregar_campo_inscripcion(id):
         if not campo['opciones']:
             flash("Para una pregunta de opción múltiple escribe al menos una opción.")
             return redirect(url_for('panel_admin'))
-    # ArrayUnion es atómico: no hace falta leer el documento primero.
+    # ArrayUnion es atómico: no hace falta leer el documento primero. El
+    # título es solo para el registro de actividad (más legible que un ID).
+    titulo_actividad = (db.collection("actividades").document(id).get().to_dict() or {}).get('titulo', id)
     db.collection("actividades").document(id).update({
         "campos_inscripcion": firestore.ArrayUnion([campo])
     })
     flash(f"Pregunta “{etiqueta}” agregada al formulario de inscripción.")
-    _registrar_actividad("Agregó pregunta de inscripción", f"“{etiqueta}” en {id}")
+    _registrar_actividad("Agregó pregunta de inscripción", f"“{etiqueta}” en “{titulo_actividad}”")
     return redirect(url_for('panel_admin'))
 
 @app.route('/panel-admin/actividad/<id>/campo/quitar', methods=['POST'])
@@ -512,11 +514,12 @@ def quitar_campo_inscripcion(id):
         campo['opciones'] = [o.strip() for o in (request.form.get('opciones') or '').split(',') if o.strip()]
     # ArrayRemove borra por igualdad exacta del elemento -- por eso el form
     # que llama a esta ruta manda de vuelta los mismos datos que se guardaron.
+    titulo_actividad = (db.collection("actividades").document(id).get().to_dict() or {}).get('titulo', id)
     db.collection("actividades").document(id).update({
         "campos_inscripcion": firestore.ArrayRemove([campo])
     })
     flash(f"Pregunta “{etiqueta}” quitada del formulario.")
-    _registrar_actividad("Quitó pregunta de inscripción", f"“{etiqueta}” en {id}")
+    _registrar_actividad("Quitó pregunta de inscripción", f"“{etiqueta}” en “{titulo_actividad}”")
     return redirect(url_for('panel_admin'))
 
 @app.route('/eliminar/<id>', methods=['POST'])
