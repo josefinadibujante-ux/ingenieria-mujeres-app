@@ -140,11 +140,12 @@ def fecha_legible(valor):
 # panel): si no, en una compu compartida, el botón "Atrás" después de cerrar
 # sesión podría mostrar una versión guardada del panel con datos reales.
 RUTAS_SIN_CACHE = {
-    "login", "logout", "panel_admin",
+    "login", "logout", "panel_admin", "panel_superadmin",
     "aprobar_actividad", "despublicar_actividad",
     "eliminar_actividad", "eliminar_inscripcion",
     "agregar_campo_inscripcion", "quitar_campo_inscripcion",
     "agregar_administradora", "eliminar_administradora",
+    "agregar_integrante", "eliminar_integrante", "actualizar_descripcion_equipo",
 }
 
 @app.after_request
@@ -161,9 +162,25 @@ def _sin_cache_en_admin(response):
 def inicio():
     return render_template('inicio_v2.html')
 
+def _obtener_equipo_y_descripcion():
+    """Compartido entre /info_centro (público) y el panel de admin."""
+    equipo_docs = db.collection("equipo").stream()
+    lista_equipo = []
+    for d in equipo_docs:
+        e = d.to_dict()
+        e['id'] = d.id
+        lista_equipo.append(e)
+    lista_equipo.sort(key=lambda e: e.get('nombre') or '')
+
+    config_doc = db.collection("configuracion").document("equipo").get()
+    descripcion = (config_doc.to_dict() or {}).get('descripcion', '') if config_doc.exists else ''
+    return lista_equipo, descripcion
+
+
 @app.route('/info_centro')
 def info_centro():
-    return render_template('info_v2.html')
+    equipo, descripcion_equipo = _obtener_equipo_y_descripcion()
+    return render_template('info_v2.html', equipo=equipo, descripcion_equipo=descripcion_equipo)
 
 @app.route('/actividades')
 def actividades():
@@ -315,6 +332,20 @@ def _esta_logueada():
     return bool(session.get('admin_email'))
 
 
+def _es_superadmin():
+    """Superadmin = una cuenta de Firestore marcada 'es_superadmin'. La
+    cuenta única de respaldo (variables de entorno) nunca es superadmin --
+    sigue siendo la administradora completa de siempre, no la de solo
+    supervisión."""
+    email = session.get('admin_email')
+    if not email:
+        return False
+    docs = list(db.collection('administradoras').where('email', '==', email).limit(1).stream())
+    if not docs:
+        return False
+    return bool(docs[0].to_dict().get('es_superadmin'))
+
+
 def _verificar_administradora(email, password):
     """Primero busca la cuenta en Firestore (varias administradoras, con
     contraseña hasheada); si no hay ninguna que coincida, cae a la cuenta
@@ -341,6 +372,8 @@ def login():
         if _verificar_administradora(email, password):
             _intentos_fallidos.pop(ip, None)
             session['admin_email'] = email.lower()
+            if _es_superadmin():
+                return redirect(url_for('panel_superadmin'))
             return redirect(url_for('panel_admin'))
         else:
             _registrar_intento_fallido(ip)
@@ -374,6 +407,10 @@ def _actividad_vencida(actividad):
 def panel_admin():
     if not _esta_logueada():
         return redirect(url_for('login'))
+    if _es_superadmin():
+        # El superadmin solo supervisa el registro de actividad -- no
+        # gestiona propuestas ni actividades, así que ni siquiera ve esto.
+        return redirect(url_for('panel_superadmin'))
 
     # 1. Propuestas pendientes (con todos los datos que mandó la persona,
     #    para poder revisarlas antes de aprobarlas, no solo el título).
@@ -436,16 +473,10 @@ def panel_admin():
         lista_admins.append(a)
     lista_admins.sort(key=lambda a: a.get('email') or '')
 
-    # 5. Registro de actividad: quién hizo qué, más reciente primero. Con un
-    #    tope -- para un sitio de este tamaño alcanza y sobra, y evita traer
-    #    una colección que podría crecer sin límite con los meses.
-    log_docs = (
-        db.collection("registro_actividad")
-        .order_by("creado_en", direction=firestore.Query.DESCENDING)
-        .limit(200)
-        .stream()
-    )
-    registro = [d.to_dict() for d in log_docs]
+    # 5. Equipo (integrantes que se muestran en /info_centro) y su texto de
+    #    descripción -- el registro de actividad ya no vive acá, es
+    #    exclusivo del panel de superadmin (/panel-superadmin).
+    equipo, descripcion_equipo = _obtener_equipo_y_descripcion()
 
     return render_template('admin_v2.html',
                            propuestas=lista_prop,
@@ -454,7 +485,29 @@ def panel_admin():
                            total_inscritas=total_inscritas,
                            administradoras=lista_admins,
                            mi_correo=session.get('admin_email', ''),
-                           registro=registro)
+                           equipo=equipo,
+                           descripcion_equipo=descripcion_equipo)
+
+
+@app.route('/panel-superadmin')
+def panel_superadmin():
+    if not _esta_logueada():
+        return redirect(url_for('login'))
+    if not _es_superadmin():
+        # Una administradora normal no tiene nada que hacer acá.
+        return redirect(url_for('panel_admin'))
+
+    # Registro de actividad de TODAS las cuentas, más reciente primero. Con
+    # un tope -- para un sitio de este tamaño alcanza y sobra, y evita traer
+    # una colección que podría crecer sin límite con los meses.
+    log_docs = (
+        db.collection("registro_actividad")
+        .order_by("creado_en", direction=firestore.Query.DESCENDING)
+        .limit(300)
+        .stream()
+    )
+    registro = [d.to_dict() for d in log_docs]
+    return render_template('superadmin_v2.html', registro=registro, mi_correo=session.get('admin_email', ''))
 
 @app.route('/aprobar/<id>', methods=['POST'])
 def aprobar_actividad(id):
@@ -563,13 +616,18 @@ def agregar_administradora():
     if existe or email == ADMIN_USER.strip().lower():
         flash(f"Ya existe una cuenta con el correo “{email}”.")
         return redirect(url_for('panel_admin'))
+    es_super = request.form.get('es_superadmin') == 'on'
     db.collection('administradoras').add({
         "email": email,
         "password_hash": generate_password_hash(password),
+        "es_superadmin": es_super,
         "creado_en": firestore.SERVER_TIMESTAMP,
     })
-    flash(f"Cuenta creada para “{email}”.")
-    _registrar_actividad("Creó cuenta de administradora", email)
+    flash(f"Cuenta {'de superadmin ' if es_super else ''}creada para “{email}”.")
+    _registrar_actividad(
+        "Creó cuenta de superadmin" if es_super else "Creó cuenta de administradora",
+        email,
+    )
     return redirect(url_for('panel_admin'))
 
 @app.route('/panel-admin/administradoras/eliminar/<id>', methods=['POST'])
@@ -584,6 +642,45 @@ def eliminar_administradora(id):
     db.collection('administradoras').document(id).delete()
     flash("Cuenta de administradora eliminada.")
     _registrar_actividad("Eliminó cuenta de administradora", email_eliminado)
+    return redirect(url_for('panel_admin'))
+
+@app.route('/panel-admin/equipo/agregar', methods=['POST'])
+def agregar_integrante():
+    if not _esta_logueada():
+        return redirect(url_for('login'))
+    nombre = (request.form.get('nombre') or '').strip()[:100]
+    rol = (request.form.get('rol') or '').strip()[:100]
+    if not nombre:
+        flash("Escribe el nombre de la integrante antes de agregarla.")
+        return redirect(url_for('panel_admin'))
+    db.collection('equipo').add({
+        "nombre": nombre,
+        "rol": rol,
+        "creado_en": firestore.SERVER_TIMESTAMP,
+    })
+    flash(f"“{nombre}” agregada al equipo.")
+    _registrar_actividad("Agregó integrante del equipo", nombre)
+    return redirect(url_for('panel_admin'))
+
+@app.route('/panel-admin/equipo/eliminar/<id>', methods=['POST'])
+def eliminar_integrante(id):
+    if not _esta_logueada():
+        return redirect(url_for('login'))
+    doc = db.collection('equipo').document(id).get()
+    nombre = (doc.to_dict() or {}).get('nombre', id) if doc.exists else id
+    db.collection('equipo').document(id).delete()
+    flash(f"“{nombre}” se sacó del equipo.")
+    _registrar_actividad("Eliminó integrante del equipo", nombre)
+    return redirect(url_for('panel_admin'))
+
+@app.route('/panel-admin/equipo/descripcion', methods=['POST'])
+def actualizar_descripcion_equipo():
+    if not _esta_logueada():
+        return redirect(url_for('login'))
+    texto = (request.form.get('descripcion') or '').strip()[:1000]
+    db.collection('configuracion').document('equipo').set({"descripcion": texto}, merge=True)
+    flash("Descripción del equipo actualizada.")
+    _registrar_actividad("Actualizó la descripción del equipo")
     return redirect(url_for('panel_admin'))
 
 @app.route('/logout')

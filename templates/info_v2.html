@@ -31,6 +31,9 @@
         .instagram-link:hover { transform: scale(1.05); background: #f8f9fa; }
         .btn-back { border: 2px solid white; color: white; border-radius: 50px; padding: 10px 25px; text-decoration: none; display: inline-block; transition: all 0.3s; }
         .btn-back:hover { background: white; color: var(--primary-purple); }
+
+        .equipo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+        .integrante-card { background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 14px; padding: 14px; text-align: center; }
     </style>
 </head>
 <body>
@@ -42,7 +45,7 @@
     <div class="container py-5">
 
         <div class="text-center mb-5" data-aos="fade-down">
-            <h1 class="display-4 fw-bold">Sobre Nosotras</h1>
+            <h1 class="display-4 fw-bold">Quiénes Somos</h1>
             <p>Comunidad de Mujeres · Campus Antonio Varas</p>
         </div>
 
@@ -63,6 +66,23 @@
                 <li class="mb-3"><strong>Crecimiento y Liderazgo:</strong> Impulsamos tu desarrollo profesional y personal a través de talleres, mentorías y una red comunitaria entre nosotras.</li>
             </ul>
         </div>
+
+        {% if equipo %}
+        <span class="emoji-separator" data-aos="zoom-in" data-aos-delay="300">👩‍🤝‍👩</span>
+
+        <div class="glass-card" data-aos="fade-up">
+            <h2 class="h4 mb-3">Nuestro Equipo</h2>
+            {% if descripcion_equipo %}<p class="mb-4">{{ descripcion_equipo }}</p>{% endif %}
+            <div class="equipo-grid">
+                {% for persona in equipo %}
+                <div class="integrante-card">
+                    <div class="fw-bold">{{ persona.nombre }}</div>
+                    {% if persona.rol %}<div class="small opacity-75">{{ persona.rol }}</div>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
 
         <span class="emoji-separator" data-aos="zoom-in" data-aos-delay="400">💡</span>
 

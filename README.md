@@ -106,6 +106,10 @@ Queda en `http://localhost:5000`. El puerto se puede cambiar con la variable
 | `/panel-admin/actividad/<id>/campo/quitar`         | Quita una pregunta                        |
 | `/panel-admin/administradoras/agregar`             | Crea una cuenta de administradora nueva   |
 | `/panel-admin/administradoras/eliminar/<id>`       | Elimina el acceso de una administradora   |
+| `/panel-admin/equipo/agregar`                      | Agrega una integrante al equipo           |
+| `/panel-admin/equipo/eliminar/<id>`                | Saca una integrante del equipo            |
+| `/panel-admin/equipo/descripcion`                  | Actualiza el texto de presentación del equipo |
+| `/panel-superadmin`                                | Panel exclusivo de superadmin: solo ve el registro de actividad de todas las cuentas |
 
 ## Base de datos (Firestore)
 
@@ -118,15 +122,35 @@ Queda en `http://localhost:5000`. El puerto se puede cambiar con la variable
   `contacto`, `respuestas` (mapa `etiqueta -> valor`, según las
   `campos_inscripcion` de la actividad), `creado_en`.
 - **`administradoras`**: `email`, `password_hash` (nunca en texto plano —
-  `werkzeug.security.generate_password_hash`), `creado_en`. Se gestionan
-  desde la pestaña "Administradoras" del panel; además de las cuentas acá,
-  la cuenta única por `ADMIN_USER`/`ADMIN_PASS` sigue funcionando siempre
-  como respaldo, aunque no aparezca en esta colección.
+  `werkzeug.security.generate_password_hash`), `es_superadmin` (booleano),
+  `creado_en`. Se gestionan desde la pestaña "Administradoras" del panel;
+  además de las cuentas acá, la cuenta única por `ADMIN_USER`/`ADMIN_PASS`
+  sigue funcionando siempre como respaldo, aunque no aparezca en esta
+  colección — esa cuenta de respaldo nunca es superadmin, para no quedar
+  bloqueada afuera del panel normal.
 - **`registro_actividad`**: `accion`, `detalle`, `admin_email`, `creado_en`.
   Se escribe automáticamente en cada acción del panel que cambia datos
   (aprobar, despublicar, eliminar, agregar/quitar pregunta, crear/eliminar
-  administradora) — se ve en la pestaña "Actividad", que muestra las
-  últimas 200 entradas, más reciente primero.
+  administradora, agregar/quitar integrante del equipo, actualizar
+  descripción del equipo) — solo lo ve la cuenta de superadmin, en
+  `/panel-superadmin`, que muestra las últimas 300 entradas de **todas**
+  las cuentas, más reciente primero.
+- **`equipo`**: `nombre`, `rol`, `creado_en`. Las integrantes que se
+  muestran en "Nuestro Equipo" dentro de `/info_centro`. Se gestionan desde
+  la pestaña "Equipo" del panel normal.
+- **`configuracion/equipo`** (documento único, no colección de varios
+  documentos): campo `descripcion`, el texto de presentación que aparece
+  arriba de la lista de integrantes en `/info_centro`.
+
+### Cuentas de superadmin
+
+Una administradora con `es_superadmin: true` entra por el mismo `/login`,
+pero en vez de ir a `/panel-admin` la manda a `/panel-superadmin`: un panel
+de solo lectura que muestra el registro de actividad de **todas** las
+cuentas (para supervisión), sin gestionar propuestas, actividades,
+inscripciones ni equipo — si intenta entrar a `/panel-admin` directamente,
+se la redirige de vuelta a su panel. Se crea tildando la casilla
+"Superadmin" al agregar una administradora nueva desde el panel normal.
 
 ## Despliegue en Render
 

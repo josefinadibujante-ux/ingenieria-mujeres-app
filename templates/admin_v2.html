@@ -154,8 +154,8 @@
         <button type="button" class="tab-btn" data-tab="tab-administradoras">
             <i class="bi bi-shield-lock"></i> Administradoras <span class="tab-count">{{ administradoras|length }}</span>
         </button>
-        <button type="button" class="tab-btn" data-tab="tab-actividad">
-            <i class="bi bi-clock-history"></i> Actividad <span class="tab-count">{{ registro|length }}</span>
+        <button type="button" class="tab-btn" data-tab="tab-equipo">
+            <i class="bi bi-person-hearts"></i> Equipo <span class="tab-count">{{ equipo|length }}</span>
         </button>
     </div>
 
@@ -298,6 +298,7 @@
                     <div>
                         <strong>{{ a.email }}</strong>
                         {% if a.email == mi_correo %}<span class="badge-preguntas ms-2">Vos</span>{% endif %}
+                        {% if a.es_superadmin %}<span class="badge-preguntas ms-2" style="background:#40114F;">Superadmin</span>{% endif %}
                     </div>
                     {% if a.email != mi_correo %}
                     <form method="POST" action="{{ url_for('eliminar_administradora', id=a.id) }}" class="form-confirmar" data-confirmar="¿Eliminar el acceso de “{{ a.email }}”?">
@@ -318,34 +319,61 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="email" name="email" placeholder="correo@uandresbello.edu" required style="flex: 1 1 220px;">
                     <input type="password" name="password" id="nuevaAdminPass" placeholder="Contraseña (mínimo 8 caracteres)" minlength="8" required style="flex: 1 1 220px;">
+                    <label class="check-requerido"><input type="checkbox" name="es_superadmin"> Superadmin (solo supervisión, no gestiona nada)</label>
                     <button type="submit" class="btn-agregar-campo"><i class="bi bi-plus-lg"></i> Crear cuenta</button>
                 </form>
             </div>
         </div>
     </div>
 
-    <div class="panel-card tab-panel" id="tab-actividad" hidden>
+    <div class="panel-card tab-panel" id="tab-equipo" hidden>
         <div class="section-title">
-            <h2>Actividad Reciente</h2>
-            <span class="contador">Últimas {{ registro|length }} acciones</span>
+            <h2>Equipo</h2>
+            <span class="contador">{{ equipo|length }} integrante(s)</span>
         </div>
-        {% if registro %}
-        <div class="tabla-scroll">
-        <table id="tabla-actividad">
-            <thead><tr><th>Cuándo</th><th>Quién</th><th>Acción</th><th>Detalle</th></tr></thead>
-            <tbody id="lista-actividad">
-                {% for r in registro %}
-                <tr>
-                    <td>{{ r.creado_en | fecha_legible }}</td>
-                    <td>{{ r.admin_email or 'desconocida' }}</td>
-                    <td>{{ r.accion }}</td>
-                    <td>{{ r.detalle or '—' }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <p class="text-muted small">Esto se muestra públicamente en la página "Quiénes Somos".</p>
+
+        {% if equipo %}
+        <div class="mb-4">
+            {% for persona in equipo %}
+            <div class="item-card">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <strong>{{ persona.nombre }}</strong>
+                        {% if persona.rol %}<span class="text-muted"> — {{ persona.rol }}</span>{% endif %}
+                    </div>
+                    <form method="POST" action="{{ url_for('eliminar_integrante', id=persona.id) }}" class="form-confirmar" data-confirmar="¿Sacar a “{{ persona.nombre }}” del equipo?">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-accion btn-eliminar btn-sm"><i class="bi bi-trash"></i> Quitar</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
         </div>
-        {% else %}<p class="no-data">Todavía no hay actividad registrada.</p>{% endif %}
+        {% else %}<p class="no-data">Todavía no cargaste ninguna integrante.</p>{% endif %}
+
+        <div class="form-builder mb-4">
+            <div class="titulo-agregar-admin"><i class="bi bi-person-plus"></i> Agregar integrante</div>
+            <div class="form-builder-contenido">
+                <form method="POST" action="{{ url_for('agregar_integrante') }}" class="form-agregar-campo">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="text" name="nombre" placeholder="Nombre" required style="flex: 1 1 200px;">
+                    <input type="text" name="rol" placeholder="Rol (ej: Presidenta, Tesorera...)" style="flex: 1 1 220px;">
+                    <button type="submit" class="btn-agregar-campo"><i class="bi bi-plus-lg"></i> Agregar</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="form-builder">
+            <div class="titulo-agregar-admin"><i class="bi bi-card-text"></i> Descripción del equipo</div>
+            <div class="form-builder-contenido">
+                <form method="POST" action="{{ url_for('actualizar_descripcion_equipo') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <textarea name="descripcion" class="form-control mb-2" rows="3" placeholder="Ej: Conocé a las mujeres que hacen posible esta comunidad.">{{ descripcion_equipo }}</textarea>
+                    <button type="submit" class="btn-agregar-campo"><i class="bi bi-save"></i> Guardar descripción</button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -401,7 +429,6 @@
     var pagPropuestas = activarPaginado('lista-propuestas', '.item-card', 10);
     var pagOficiales = activarPaginado('lista-oficiales', '.item-card', 10);
     var pagInscritas = activarPaginado('lista-inscritas', '.grupo-actividad', 10);
-    activarPaginado('lista-actividad', 'tr', 15);
 
     // --- Buscadores: al escribir, se muestra todo lo paginado y se filtra ---
     function activarFiltro(inputSelector, itemSelector, paginador) {

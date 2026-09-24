@@ -36,7 +36,11 @@ app_v2.app.config["TESTING"] = True
 # adentro de un email de prueba (nombre.testpytest.algo@test.cl) sin romper
 # el formato. El barrido busca este texto sin importar mayúsculas/minúsculas.
 MARCA_PRUEBA = "testpytest"
-COLECCIONES = ("actividades", "inscripciones", "administradoras", "registro_actividad")
+COLECCIONES = ("actividades", "inscripciones", "administradoras", "registro_actividad", "equipo")
+# "configuracion" queda AFUERA del barrido a propósito: no es una colección
+# de documentos descartables como las demás, es un documento único
+# (configuracion/equipo) que puede tener contenido real tuyo -- el test que
+# lo toca guarda el valor original y lo restaura él mismo (ver test_equipo.py).
 
 
 def _barrer_datos_de_prueba():

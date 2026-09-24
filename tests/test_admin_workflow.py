@@ -86,9 +86,17 @@ def test_pregunta_de_opcion_multiple_sin_opciones_rechazada(admin_client, crear_
 
 
 def test_registro_de_actividad_anota_quien_aprobo_que(admin_client, crear_actividad, csrf_token):
+    """El registro ya no vive en /panel-admin (pasó a ser exclusivo del
+    superadmin) -- se verifica directo en Firestore, que es lo único que
+    de verdad importa acá: que la entrada haya quedado bien escrita."""
+    import app_v2
     doc_id = crear_actividad()
     admin_client.post(f"/aprobar/{doc_id}", data={"csrf_token": csrf_token(admin_client, "/panel-admin")})
 
-    pagina = admin_client.get("/panel-admin").data.decode()
-    assert "Aprobó actividad" in pagina
-    assert f"[{MARCA_PRUEBA}]" in pagina.split("Aprobó actividad")[1][:300] or True
+    entradas = [
+        d.to_dict() for d in app_v2.db.collection("registro_actividad")
+        .where("accion", "==", "Aprobó actividad").stream()
+    ]
+    coincidencias = [e for e in entradas if MARCA_PRUEBA in (e.get("detalle") or "").lower()]
+    assert coincidencias, "no se encontró la entrada de 'Aprobó actividad' para esta actividad de prueba"
+    assert coincidencias[-1]["admin_email"] == app_v2.ADMIN_USER
