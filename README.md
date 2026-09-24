@@ -1,9 +1,12 @@
 # Comunidad de Mujeres · Campus Antonio Varas
 
+[![Tests](https://github.com/josefinadibujante-ux/ingenieria-mujeres-app/actions/workflows/tests.yml/badge.svg)](https://github.com/josefinadibujante-ux/ingenieria-mujeres-app/actions/workflows/tests.yml)
+
 Sitio web de la Comunidad de Mujeres del Campus Antonio Varas (UNAB). Aplicación
 Flask con **Firebase Firestore** como base de datos. Permite publicar talleres y
-actividades, recibir propuestas (alumna / tutora), gestionar un club de cine e
-inscribir participantes, con un panel de administración protegido.
+actividades, recibir propuestas (alumna / tutora), gestionar alianzas con
+organizaciones externas e inscribir participantes, con un panel de
+administración protegido (varias administradoras, registro de actividad).
 
 ## Stack
 
@@ -185,6 +188,27 @@ datos de prueba separada. Por eso:
   corrida barre cualquier resto antes de empezar.
 - No hace falta (ni conviene) correrlos apuntando a una base con datos
   reales de estudiantes sin haber revisado antes `tests/conftest.py`.
+
+### Corren solos en GitHub (CI)
+
+`.github/workflows/tests.yml` corre toda la suite automáticamente en cada
+`push` a `main` — mismas advertencias que arriba (Firestore real, se limpia
+solo). Se dispara **solo con push, nunca con pull request** a propósito: el
+repo es público, y así ningún pull request externo puede llegar a tocar los
+secretos.
+
+**Para activarlo hace falta cargar la clave de Firebase como secreto del
+repo** (una sola vez):
+
+1. En GitHub: `Settings` → `Secrets and variables` → `Actions` →
+   `New repository secret`.
+2. Nombre: `FIREBASE_KEY_JSON`.
+3. Valor: el contenido completo de tu `key.json` (abrilo con un editor de
+   texto y pegá todo, tal cual).
+
+Sin ese secreto cargado, el workflow va a fallar en el paso de "Escribir la
+clave de Firebase" — no rompe nada más, pero no va a poder conectarse a la
+base para correr los tests.
 
 ## Seguridad
 
