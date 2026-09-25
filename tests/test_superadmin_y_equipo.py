@@ -8,10 +8,12 @@ from conftest import MARCA_PRUEBA
 
 
 def _crear_superadmin(admin_client, csrf_token):
-    """Crea una cuenta de superadmin de prueba y devuelve (email, id)."""
+    """Crea una cuenta de superadmin de prueba y devuelve (email, id). Usa
+    admin_client (la cuenta de respaldo) porque es la única, junto con un
+    superadmin ya existente, que puede crear cuentas."""
     email = f"{MARCA_PRUEBA}-super-{id(admin_client)}@test.cl".lower()
-    admin_client.post("/panel-admin/administradoras/agregar", data={
-        "csrf_token": csrf_token(admin_client, "/panel-admin"),
+    admin_client.post("/panel-superadmin/administradoras/agregar", data={
+        "csrf_token": csrf_token(admin_client, "/panel-superadmin"),
         "email": email, "password": "claveSuperSegura123", "es_superadmin": "on",
     })
     doc_id = None
@@ -19,6 +21,12 @@ def _crear_superadmin(admin_client, csrf_token):
         doc_id = d.id
     assert doc_id, "no se encontró la cuenta de superadmin recién creada"
     return email, doc_id
+
+
+def _eliminar_administradora(admin_client, csrf_token, doc_id):
+    admin_client.post(f"/panel-superadmin/administradoras/eliminar/{doc_id}", data={
+        "csrf_token": csrf_token(admin_client, "/panel-superadmin"),
+    })
 
 
 def test_login_de_superadmin_redirige_a_su_propio_panel(admin_client, client, csrf_token):
@@ -29,9 +37,7 @@ def test_login_de_superadmin_redirige_a_su_propio_panel(admin_client, client, cs
     })
     assert r.status_code == 302 and r.headers["Location"] == "/panel-superadmin"
 
-    admin_client.post(f"/panel-admin/administradoras/eliminar/{doc_id}", data={
-        "csrf_token": csrf_token(admin_client, "/panel-admin"),
-    })
+    _eliminar_administradora(admin_client, csrf_token, doc_id)
 
 
 def test_superadmin_ve_el_registro_de_otra_cuenta(admin_client, crear_actividad, client, csrf_token):
@@ -47,9 +53,7 @@ def test_superadmin_ve_el_registro_de_otra_cuenta(admin_client, crear_actividad,
     assert app_v2.ADMIN_USER in pagina  # ve la acción hecha por la OTRA cuenta
     assert "Aprobó actividad" in pagina
 
-    admin_client.post(f"/panel-admin/administradoras/eliminar/{doc_id}", data={
-        "csrf_token": csrf_token(admin_client, "/panel-admin"),
-    })
+    _eliminar_administradora(admin_client, csrf_token, doc_id)
 
 
 def test_superadmin_no_puede_entrar_al_panel_normal(admin_client, client, csrf_token):
@@ -61,14 +65,30 @@ def test_superadmin_no_puede_entrar_al_panel_normal(admin_client, client, csrf_t
     r = client.get("/panel-admin")
     assert r.status_code == 302 and r.headers["Location"] == "/panel-superadmin"
 
-    admin_client.post(f"/panel-admin/administradoras/eliminar/{doc_id}", data={
-        "csrf_token": csrf_token(admin_client, "/panel-admin"),
+    _eliminar_administradora(admin_client, csrf_token, doc_id)
+
+
+def test_superadmin_puede_crear_otras_cuentas(admin_client, client, csrf_token):
+    """El pedido concreto: desde una cuenta de superadmin real (no solo la
+    de respaldo) también se pueden crear otras cuentas."""
+    email_super, doc_id_super = _crear_superadmin(admin_client, csrf_token)
+    client.post("/login", data={
+        "email": email_super, "password": "claveSuperSegura123",
+        "csrf_token": csrf_token(client, "/login"),
     })
 
+    email_nueva = f"{MARCA_PRUEBA}-creada-por-super-{id(client)}@test.cl".lower()
+    r = client.post("/panel-superadmin/administradoras/agregar", data={
+        "csrf_token": csrf_token(client, "/panel-superadmin"),
+        "email": email_nueva, "password": "otraClaveValida123",
+    })
+    assert r.status_code == 302
+    pagina = client.get("/panel-superadmin").data.decode()
+    assert email_nueva in pagina
 
-def test_administradora_normal_no_puede_entrar_al_panel_de_superadmin(admin_client):
-    r = admin_client.get("/panel-superadmin")
-    assert r.status_code == 302 and r.headers["Location"] == "/panel-admin"
+    m = re.search(r'/panel-superadmin/administradoras/eliminar/([^"]+)"', pagina[pagina.find(email_nueva):])
+    _eliminar_administradora(admin_client, csrf_token, m.group(1))
+    _eliminar_administradora(admin_client, csrf_token, doc_id_super)
 
 
 # --- Equipo ---

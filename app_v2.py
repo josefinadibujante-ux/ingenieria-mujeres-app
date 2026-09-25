@@ -346,6 +346,18 @@ def _es_superadmin():
     return bool(docs[0].to_dict().get('es_superadmin'))
 
 
+def _puede_gestionar_cuentas():
+    """Quién puede crear/eliminar cuentas de administradora (incluidas las
+    de superadmin): las superadmin, y también la cuenta única de respaldo
+    (variables de entorno) -- sin esto último nadie podría crear la
+    primerísima cuenta de superadmin, porque ninguna Firestore existiría
+    todavía marcada como tal."""
+    email = session.get('admin_email')
+    if not email:
+        return False
+    return _es_superadmin() or email == ADMIN_USER.strip().lower()
+
+
 def _verificar_administradora(email, password):
     """Primero busca la cuenta en Firestore (varias administradoras, con
     contraseña hasheada); si no hay ninguna que coincida, cae a la cuenta
@@ -463,19 +475,10 @@ def panel_admin():
 
     total_inscritas = sum(len(g["inscritas"]) for g in inscripciones_agrupadas)
 
-    # 4. Administradoras (cuentas en Firestore -- no incluye la cuenta única
-    #    de respaldo por variables de entorno, que no vive en la base).
-    admin_docs = db.collection("administradoras").stream()
-    lista_admins = []
-    for d in admin_docs:
-        a = d.to_dict()
-        a['id'] = d.id
-        lista_admins.append(a)
-    lista_admins.sort(key=lambda a: a.get('email') or '')
-
-    # 5. Equipo (integrantes que se muestran en /info_centro) y su texto de
-    #    descripción -- el registro de actividad ya no vive acá, es
-    #    exclusivo del panel de superadmin (/panel-superadmin).
+    # 4. Equipo (integrantes que se muestran en /info_centro) y su texto de
+    #    descripción -- la gestión de cuentas de administradora y el
+    #    registro de actividad ya no viven acá, son exclusivos del panel de
+    #    superadmin (/panel-superadmin).
     equipo, descripcion_equipo = _obtener_equipo_y_descripcion()
 
     return render_template('admin_v2.html',
@@ -483,8 +486,8 @@ def panel_admin():
                            oficiales=lista_oficiales,
                            inscripciones_agrupadas=inscripciones_agrupadas,
                            total_inscritas=total_inscritas,
-                           administradoras=lista_admins,
                            mi_correo=session.get('admin_email', ''),
+                           puede_gestionar_cuentas=_puede_gestionar_cuentas(),
                            equipo=equipo,
                            descripcion_equipo=descripcion_equipo)
 
@@ -493,8 +496,10 @@ def panel_admin():
 def panel_superadmin():
     if not _esta_logueada():
         return redirect(url_for('login'))
-    if not _es_superadmin():
-        # Una administradora normal no tiene nada que hacer acá.
+    if not _puede_gestionar_cuentas():
+        # Una administradora normal no tiene nada que hacer acá -- solo el
+        # superadmin y la cuenta de respaldo (que la necesita para poder
+        # crear la primera cuenta de superadmin) entran.
         return redirect(url_for('panel_admin'))
 
     # Registro de actividad de TODAS las cuentas, más reciente primero. Con
@@ -507,7 +512,19 @@ def panel_superadmin():
         .stream()
     )
     registro = [d.to_dict() for d in log_docs]
-    return render_template('superadmin_v2.html', registro=registro, mi_correo=session.get('admin_email', ''))
+
+    admin_docs = db.collection("administradoras").stream()
+    lista_admins = []
+    for d in admin_docs:
+        a = d.to_dict()
+        a['id'] = d.id
+        lista_admins.append(a)
+    lista_admins.sort(key=lambda a: a.get('email') or '')
+
+    return render_template('superadmin_v2.html',
+                           registro=registro,
+                           administradoras=lista_admins,
+                           mi_correo=session.get('admin_email', ''))
 
 @app.route('/aprobar/<id>', methods=['POST'])
 def aprobar_actividad(id):
@@ -600,22 +617,26 @@ def eliminar_inscripcion(id):
         _registrar_actividad("Eliminó inscripción", nombre)
     return redirect(url_for('panel_admin'))
 
-@app.route('/panel-admin/administradoras/agregar', methods=['POST'])
+@app.route('/panel-superadmin/administradoras/agregar', methods=['POST'])
 def agregar_administradora():
     if not _esta_logueada():
         return redirect(url_for('login'))
+    if not _puede_gestionar_cuentas():
+        # Ni siquiera las administradoras normales llegan hasta acá -- solo
+        # el superadmin (o la cuenta de respaldo) puede crear cuentas.
+        return redirect(url_for('panel_admin'))
     email = (request.form.get('email') or '').strip().lower()
     password = request.form.get('password') or ''
     if not email or '@' not in email:
         flash("Escribe un correo válido para la nueva administradora.")
-        return redirect(url_for('panel_admin'))
+        return redirect(url_for('panel_superadmin'))
     if len(password) < 8:
         flash("La contraseña debe tener al menos 8 caracteres.")
-        return redirect(url_for('panel_admin'))
+        return redirect(url_for('panel_superadmin'))
     existe = list(db.collection('administradoras').where('email', '==', email).limit(1).stream())
     if existe or email == ADMIN_USER.strip().lower():
         flash(f"Ya existe una cuenta con el correo “{email}”.")
-        return redirect(url_for('panel_admin'))
+        return redirect(url_for('panel_superadmin'))
     es_super = request.form.get('es_superadmin') == 'on'
     db.collection('administradoras').add({
         "email": email,
@@ -628,21 +649,23 @@ def agregar_administradora():
         "Creó cuenta de superadmin" if es_super else "Creó cuenta de administradora",
         email,
     )
-    return redirect(url_for('panel_admin'))
+    return redirect(url_for('panel_superadmin'))
 
-@app.route('/panel-admin/administradoras/eliminar/<id>', methods=['POST'])
+@app.route('/panel-superadmin/administradoras/eliminar/<id>', methods=['POST'])
 def eliminar_administradora(id):
     if not _esta_logueada():
         return redirect(url_for('login'))
+    if not _puede_gestionar_cuentas():
+        return redirect(url_for('panel_admin'))
     doc = db.collection('administradoras').document(id).get()
     if doc.exists and (doc.to_dict().get('email') or '') == session.get('admin_email'):
         flash("No puedes eliminar la cuenta con la que estás conectada ahora mismo.")
-        return redirect(url_for('panel_admin'))
+        return redirect(url_for('panel_superadmin'))
     email_eliminado = (doc.to_dict() or {}).get('email', id) if doc.exists else id
     db.collection('administradoras').document(id).delete()
     flash("Cuenta de administradora eliminada.")
     _registrar_actividad("Eliminó cuenta de administradora", email_eliminado)
-    return redirect(url_for('panel_admin'))
+    return redirect(url_for('panel_superadmin'))
 
 @app.route('/panel-admin/equipo/agregar', methods=['POST'])
 def agregar_integrante():

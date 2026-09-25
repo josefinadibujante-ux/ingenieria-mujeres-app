@@ -132,6 +132,9 @@
 <div class="panel">
     <h1>Panel de Control 👑</h1>
     <div class="text-center">
+        {% if puede_gestionar_cuentas %}
+        <a href="{{ url_for('panel_superadmin') }}" class="btn-logout" style="background:#40114F;"><i class="bi bi-shield-lock me-2"></i>Gestión de Cuentas</a>
+        {% endif %}
         <a href="{{ url_for('logout') }}" class="btn-logout"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</a>
     </div>
 
@@ -150,9 +153,6 @@
         </button>
         <button type="button" class="tab-btn" data-tab="tab-inscritas">
             <i class="bi bi-people-fill"></i> Inscritas <span class="tab-count">{{ total_inscritas }}</span>
-        </button>
-        <button type="button" class="tab-btn" data-tab="tab-administradoras">
-            <i class="bi bi-shield-lock"></i> Administradoras <span class="tab-count">{{ administradoras|length }}</span>
         </button>
         <button type="button" class="tab-btn" data-tab="tab-equipo">
             <i class="bi bi-person-hearts"></i> Equipo <span class="tab-count">{{ equipo|length }}</span>
@@ -279,51 +279,6 @@
             {% endfor %}
             </div>
         {% else %}<p class="no-data">No hay inscripciones aún.</p>{% endif %}
-    </div>
-
-    <div class="panel-card tab-panel" id="tab-administradoras" hidden>
-        <div class="section-title">
-            <h2>Administradoras</h2>
-            <span class="contador">{{ administradoras|length }} cuenta(s)</span>
-        </div>
-        <p class="text-muted small">
-            Además de esta lista, la cuenta configurada por variables de entorno
-            (<code>ADMIN_USER</code>) sigue funcionando siempre como respaldo.
-        </p>
-        {% if administradoras %}
-        <div class="mb-4">
-            {% for a in administradoras %}
-            <div class="item-card">
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div>
-                        <strong>{{ a.email }}</strong>
-                        {% if a.email == mi_correo %}<span class="badge-preguntas ms-2">Vos</span>{% endif %}
-                        {% if a.es_superadmin %}<span class="badge-preguntas ms-2" style="background:#40114F;">Superadmin</span>{% endif %}
-                    </div>
-                    {% if a.email != mi_correo %}
-                    <form method="POST" action="{{ url_for('eliminar_administradora', id=a.id) }}" class="form-confirmar" data-confirmar="¿Eliminar el acceso de “{{ a.email }}”?">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn-accion btn-eliminar btn-sm"><i class="bi bi-trash"></i> Eliminar acceso</button>
-                    </form>
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}<p class="no-data">Todavía no creaste ninguna cuenta adicional.</p>{% endif %}
-
-        <div class="form-builder">
-            <div class="titulo-agregar-admin"><i class="bi bi-person-plus"></i> Agregar una administradora</div>
-            <div class="form-builder-contenido">
-                <form method="POST" action="{{ url_for('agregar_administradora') }}" class="form-agregar-campo" id="formNuevaAdmin">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="email" name="email" placeholder="correo@uandresbello.edu" required style="flex: 1 1 220px;">
-                    <input type="password" name="password" id="nuevaAdminPass" placeholder="Contraseña (mínimo 8 caracteres)" minlength="8" required style="flex: 1 1 220px;">
-                    <label class="check-requerido"><input type="checkbox" name="es_superadmin"> Superadmin (solo supervisión, no gestiona nada)</label>
-                    <button type="submit" class="btn-agregar-campo"><i class="bi bi-plus-lg"></i> Crear cuenta</button>
-                </form>
-            </div>
-        </div>
     </div>
 
     <div class="panel-card tab-panel" id="tab-equipo" hidden>

@@ -72,15 +72,20 @@ def test_paginas_publicas_no_fuerzan_cache_control(client):
 
 
 # --- Administradoras (varias cuentas, cada una con su login) ---
+#
+# Solo el superadmin -- y, para poder crear a la primerísima, también la
+# cuenta de respaldo por variables de entorno -- puede crear o eliminar
+# cuentas. Por eso estos tests usan admin_client (que ES esa cuenta de
+# respaldo) contra las rutas de /panel-superadmin.
 
 def test_crear_administradora_y_loguearse_con_ella(admin_client, csrf_token, client):
     email = f"{MARCA_PRUEBA}-nueva-{id(client)}@test.cl".lower()
-    r = admin_client.post("/panel-admin/administradoras/agregar", data={
-        "csrf_token": csrf_token(admin_client, "/panel-admin"),
+    r = admin_client.post("/panel-superadmin/administradoras/agregar", data={
+        "csrf_token": csrf_token(admin_client, "/panel-superadmin"),
         "email": email, "password": "unaClaveSegura123",
     })
     assert r.status_code == 302
-    pagina = admin_client.get("/panel-admin").data.decode()
+    pagina = admin_client.get("/panel-superadmin").data.decode()
     assert email in pagina
 
     # un cliente nuevo, sin sesión, se loguea con la cuenta recién creada
@@ -91,60 +96,97 @@ def test_crear_administradora_y_loguearse_con_ella(admin_client, csrf_token, cli
     assert r2.status_code == 302 and r2.headers["Location"] == "/panel-admin"
 
     # limpieza
-    m = re.search(r'/panel-admin/administradoras/eliminar/([^"]+)"', pagina)
-    admin_client.post(f"/panel-admin/administradoras/eliminar/{m.group(1)}", data={
-        "csrf_token": csrf_token(admin_client, "/panel-admin"),
+    m = re.search(r'/panel-superadmin/administradoras/eliminar/([^"]+)"', pagina)
+    admin_client.post(f"/panel-superadmin/administradoras/eliminar/{m.group(1)}", data={
+        "csrf_token": csrf_token(admin_client, "/panel-superadmin"),
     })
 
 
 def test_contrasena_corta_rechazada(admin_client, csrf_token):
     email = f"{MARCA_PRUEBA}-corta-{id(admin_client)}@test.cl".lower()
-    admin_client.post("/panel-admin/administradoras/agregar", data={
-        "csrf_token": csrf_token(admin_client, "/panel-admin"),
+    admin_client.post("/panel-superadmin/administradoras/agregar", data={
+        "csrf_token": csrf_token(admin_client, "/panel-superadmin"),
         "email": email, "password": "1234567",  # 7 caracteres, menos del mínimo
     })
-    pagina = admin_client.get("/panel-admin").data.decode()
+    pagina = admin_client.get("/panel-superadmin").data.decode()
     assert email not in pagina
 
 
 def test_correo_duplicado_rechazado(admin_client, csrf_token):
     email = f"{MARCA_PRUEBA}-dup-{id(admin_client)}@test.cl".lower()
-    admin_client.post("/panel-admin/administradoras/agregar", data={
-        "csrf_token": csrf_token(admin_client, "/panel-admin"), "email": email, "password": "claveValida123",
+    admin_client.post("/panel-superadmin/administradoras/agregar", data={
+        "csrf_token": csrf_token(admin_client, "/panel-superadmin"), "email": email, "password": "claveValida123",
     })
-    r = admin_client.post("/panel-admin/administradoras/agregar", data={
-        "csrf_token": csrf_token(admin_client, "/panel-admin"), "email": email, "password": "otraClave456",
+    r = admin_client.post("/panel-superadmin/administradoras/agregar", data={
+        "csrf_token": csrf_token(admin_client, "/panel-superadmin"), "email": email, "password": "otraClave456",
     })
-    pagina = admin_client.get("/panel-admin").data.decode()
+    pagina = admin_client.get("/panel-superadmin").data.decode()
     assert "Ya existe una cuenta".encode() in r.data or "Ya existe una cuenta" in pagina
 
-    m = re.search(r'/panel-admin/administradoras/eliminar/([^"]+)"', pagina)
-    admin_client.post(f"/panel-admin/administradoras/eliminar/{m.group(1)}", data={
-        "csrf_token": csrf_token(admin_client, "/panel-admin"),
+    m = re.search(r'/panel-superadmin/administradoras/eliminar/([^"]+)"', pagina)
+    admin_client.post(f"/panel-superadmin/administradoras/eliminar/{m.group(1)}", data={
+        "csrf_token": csrf_token(admin_client, "/panel-superadmin"),
     })
 
 
 def test_no_se_puede_autoeliminar(admin_client, csrf_token, client):
     email = f"{MARCA_PRUEBA}-self-{id(client)}@test.cl".lower()
-    admin_client.post("/panel-admin/administradoras/agregar", data={
-        "csrf_token": csrf_token(admin_client, "/panel-admin"), "email": email, "password": "claveValida123",
+    admin_client.post("/panel-superadmin/administradoras/agregar", data={
+        "csrf_token": csrf_token(admin_client, "/panel-superadmin"),
+        "email": email, "password": "claveValida123", "es_superadmin": "on",
     })
-    pagina = admin_client.get("/panel-admin").data.decode()
-    m = re.search(r'/panel-admin/administradoras/eliminar/([^"]+)"', pagina)
+    pagina = admin_client.get("/panel-superadmin").data.decode()
+    m = re.search(r'/panel-superadmin/administradoras/eliminar/([^"]+)"', pagina)
     doc_id = m.group(1)
 
-    # entra CON esa cuenta (cliente propio) y prueba borrarse a si misma
+    # entra CON esa cuenta (cliente propio, que es superadmin) y prueba
+    # borrarse a si misma
     client.post("/login", data={
         "email": email, "password": "claveValida123",
         "csrf_token": csrf_token(client, "/login"),
     })
-    client.post(f"/panel-admin/administradoras/eliminar/{doc_id}", data={
-        "csrf_token": csrf_token(client, "/panel-admin"),
+    client.post(f"/panel-superadmin/administradoras/eliminar/{doc_id}", data={
+        "csrf_token": csrf_token(client, "/panel-superadmin"),
     })
-    pagina2 = client.get("/panel-admin").data.decode()
+    pagina2 = client.get("/panel-superadmin").data.decode()
     assert email in pagina2  # sigue estando, no se pudo autoeliminar
 
     # limpieza con la cuenta de respaldo
-    admin_client.post(f"/panel-admin/administradoras/eliminar/{doc_id}", data={
-        "csrf_token": csrf_token(admin_client, "/panel-admin"),
+    admin_client.post(f"/panel-superadmin/administradoras/eliminar/{doc_id}", data={
+        "csrf_token": csrf_token(admin_client, "/panel-superadmin"),
+    })
+
+
+def test_administradora_normal_no_puede_crear_ni_eliminar_cuentas(admin_client, csrf_token, client):
+    """El pedido concreto de esta funcionalidad: solo el superadmin (y la
+    cuenta de respaldo, que la necesita para crear a la primera) gestiona
+    cuentas -- una administradora normal no puede, ni siquiera mandando el
+    POST directo."""
+    email = f"{MARCA_PRUEBA}-normal-{id(client)}@test.cl".lower()
+    admin_client.post("/panel-superadmin/administradoras/agregar", data={
+        "csrf_token": csrf_token(admin_client, "/panel-superadmin"),
+        "email": email, "password": "claveValida123",  # sin es_superadmin: administradora normal
+    })
+
+    client.post("/login", data={
+        "email": email, "password": "claveValida123",
+        "csrf_token": csrf_token(client, "/login"),
+    })
+    # no puede ver el panel de gestión de cuentas
+    r = client.get("/panel-superadmin")
+    assert r.status_code == 302 and r.headers["Location"] == "/panel-admin"
+
+    # ni crear otra cuenta mandando el POST directo
+    otro_email = f"{MARCA_PRUEBA}-intento-{id(client)}@test.cl".lower()
+    client.post("/panel-superadmin/administradoras/agregar", data={
+        "csrf_token": csrf_token(client, "/panel-admin"),
+        "email": otro_email, "password": "claveValida123",
+    })
+    pagina = admin_client.get("/panel-superadmin").data.decode()
+    assert otro_email not in pagina
+
+    # limpieza
+    m = re.search(r'/panel-superadmin/administradoras/eliminar/([^"]+)"', pagina[pagina.find(email):])
+    admin_client.post(f"/panel-superadmin/administradoras/eliminar/{m.group(1)}", data={
+        "csrf_token": csrf_token(admin_client, "/panel-superadmin"),
     })

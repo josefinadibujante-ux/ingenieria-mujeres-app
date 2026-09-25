@@ -36,7 +36,8 @@ def test_acciones_de_admin_rechazan_get(admin_client):
     cualquier página externa podría dispararlas sin querer."""
     for ruta in ["/aprobar/x", "/despublicar/x", "/eliminar/x", "/eliminar_inscripcion/x",
                  "/panel-admin/actividad/x/campo/agregar", "/panel-admin/actividad/x/campo/quitar",
-                 "/panel-admin/administradoras/agregar", "/panel-admin/administradoras/eliminar/x"]:
+                 "/panel-superadmin/administradoras/agregar", "/panel-superadmin/administradoras/eliminar/x",
+                 "/panel-admin/equipo/agregar", "/panel-admin/equipo/eliminar/x", "/panel-admin/equipo/descripcion"]:
         r = admin_client.get(ruta)
         assert r.status_code == 405, f"{ruta} aceptó GET"
 

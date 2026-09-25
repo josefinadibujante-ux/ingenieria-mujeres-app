@@ -97,19 +97,19 @@ Queda en `http://localhost:5000`. El puerto se puede cambiar con la variable
 |----------------------------------------------------|-------------------------------------------|
 | `/login`                                           | Acceso administrativo                     |
 | `/logout`                                          | Cierra sesión                             |
-| `/panel-admin`                                     | Panel con pestañas (propuestas, publicadas, inscritas, administradoras) |
+| `/panel-admin`                                     | Panel con pestañas (propuestas, publicadas, inscritas, equipo) |
 | `/aprobar/<id>`                                    | Aprueba una propuesta (pasa a `oficial`)  |
 | `/despublicar/<id>`                                | Vuelve una actividad oficial a pendiente  |
 | `/eliminar/<id>`                                   | Elimina una actividad                     |
 | `/eliminar_inscripcion/<id>`                       | Elimina una inscripción                   |
 | `/panel-admin/actividad/<id>/campo/agregar`        | Agrega una pregunta al formulario de una actividad |
 | `/panel-admin/actividad/<id>/campo/quitar`         | Quita una pregunta                        |
-| `/panel-admin/administradoras/agregar`             | Crea una cuenta de administradora nueva   |
-| `/panel-admin/administradoras/eliminar/<id>`       | Elimina el acceso de una administradora   |
 | `/panel-admin/equipo/agregar`                      | Agrega una integrante al equipo           |
 | `/panel-admin/equipo/eliminar/<id>`                | Saca una integrante del equipo            |
 | `/panel-admin/equipo/descripcion`                  | Actualiza el texto de presentación del equipo |
-| `/panel-superadmin`                                | Panel exclusivo de superadmin: solo ve el registro de actividad de todas las cuentas |
+| `/panel-superadmin`                                | Panel exclusivo de superadmin (y de la cuenta de respaldo): registro de actividad de todas las cuentas + gestión de cuentas de administradora |
+| `/panel-superadmin/administradoras/agregar`        | Crea una cuenta de administradora nueva (solo superadmin o cuenta de respaldo) |
+| `/panel-superadmin/administradoras/eliminar/<id>`  | Elimina el acceso de una administradora (solo superadmin o cuenta de respaldo) |
 
 ## Base de datos (Firestore)
 
@@ -123,18 +123,18 @@ Queda en `http://localhost:5000`. El puerto se puede cambiar con la variable
   `campos_inscripcion` de la actividad), `creado_en`.
 - **`administradoras`**: `email`, `password_hash` (nunca en texto plano —
   `werkzeug.security.generate_password_hash`), `es_superadmin` (booleano),
-  `creado_en`. Se gestionan desde la pestaña "Administradoras" del panel;
-  además de las cuentas acá, la cuenta única por `ADMIN_USER`/`ADMIN_PASS`
-  sigue funcionando siempre como respaldo, aunque no aparezca en esta
-  colección — esa cuenta de respaldo nunca es superadmin, para no quedar
-  bloqueada afuera del panel normal.
+  `creado_en`. Se gestionan desde `/panel-superadmin` (solo superadmin o la
+  cuenta de respaldo — ver abajo); además de las cuentas acá, la cuenta
+  única por `ADMIN_USER`/`ADMIN_PASS` sigue funcionando siempre como
+  respaldo, aunque no aparezca en esta colección — esa cuenta de respaldo
+  nunca es superadmin, para no quedar bloqueada afuera del panel normal.
 - **`registro_actividad`**: `accion`, `detalle`, `admin_email`, `creado_en`.
   Se escribe automáticamente en cada acción del panel que cambia datos
   (aprobar, despublicar, eliminar, agregar/quitar pregunta, crear/eliminar
   administradora, agregar/quitar integrante del equipo, actualizar
-  descripción del equipo) — solo lo ve la cuenta de superadmin, en
-  `/panel-superadmin`, que muestra las últimas 300 entradas de **todas**
-  las cuentas, más reciente primero.
+  descripción del equipo) — solo lo ve la cuenta de superadmin (y la de
+  respaldo), en `/panel-superadmin`, que muestra las últimas 300 entradas
+  de **todas** las cuentas, más reciente primero.
 - **`equipo`**: `nombre`, `rol`, `creado_en`. Las integrantes que se
   muestran en "Nuestro Equipo" dentro de `/info_centro`. Se gestionan desde
   la pestaña "Equipo" del panel normal.
@@ -146,11 +146,20 @@ Queda en `http://localhost:5000`. El puerto se puede cambiar con la variable
 
 Una administradora con `es_superadmin: true` entra por el mismo `/login`,
 pero en vez de ir a `/panel-admin` la manda a `/panel-superadmin`: un panel
-de solo lectura que muestra el registro de actividad de **todas** las
-cuentas (para supervisión), sin gestionar propuestas, actividades,
-inscripciones ni equipo — si intenta entrar a `/panel-admin` directamente,
-se la redirige de vuelta a su panel. Se crea tildando la casilla
-"Superadmin" al agregar una administradora nueva desde el panel normal.
+que muestra el registro de actividad de **todas** las cuentas y gestiona
+las cuentas de administradora (crear/eliminar, incluidas otras cuentas de
+superadmin), sin gestionar propuestas, actividades, inscripciones ni
+equipo — si intenta entrar a `/panel-admin` directamente, se la redirige
+de vuelta a su panel.
+
+**Solo puede crear o eliminar cuentas** quien ya es superadmin, o la
+cuenta única de respaldo (`ADMIN_USER`/`ADMIN_PASS`) — una administradora
+normal no tiene esa opción en ningún lado, ni mandando el formulario
+directo. Esto es a propósito: la cuenta de respaldo es la única forma de
+crear la primerísima cuenta de superadmin (antes de que exista alguna, no
+hay ningún superadmin todavía que pueda crearla); desde el panel normal,
+a esa cuenta de respaldo le aparece un botón "Gestión de Cuentas" que la
+lleva a `/panel-superadmin`.
 
 ## Despliegue en Render
 
@@ -240,10 +249,15 @@ base para correr los tests.
   (cuenta de respaldo) o hasheadas en Firestore (cuentas de la colección
   `administradoras`) — nunca en texto plano en ningún lado.
 - Varias administradoras posibles, cada una con su propio correo/contraseña
-  (colección `administradoras`, gestionada desde el panel). Todas tienen los
-  mismos permisos por ahora — no hay niveles de acceso. Una administradora
-  no puede eliminar su propia cuenta desde la interfaz (para no quedar
-  bloqueada sin querer).
+  (colección `administradoras`, gestionada desde `/panel-superadmin`). Dos
+  niveles: administradora normal (gestiona propuestas, actividades,
+  inscripciones y equipo) y superadmin (solo ve el registro de actividad de
+  todas las cuentas y gestiona las cuentas mismas). Crear o eliminar
+  cuentas es exclusivo del superadmin (y de la cuenta de respaldo, para
+  poder crear a la primera) — una administradora normal no tiene esa
+  opción ni siquiera mandando el formulario directo. Ninguna cuenta puede
+  eliminar su propia cuenta desde la interfaz (para no quedar bloqueada sin
+  querer).
 - CSRF en todos los formularios POST (`csrf_token` de Flask-WTF). Las acciones
   del panel admin (aprobar, despublicar, eliminar, borrar inscripción) son
   formularios POST, no links GET — así no se pueden disparar sin querer ni sin
